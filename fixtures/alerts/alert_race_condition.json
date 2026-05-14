@@ -1,0 +1,32 @@
+{
+  "alert_id": "SENTRY-2024-001",
+  "timestamp": "2024-05-14T12:34:56Z",
+  "severity": "high",
+  "service": "checkout-service",
+  "environment": "production",
+  "error": {
+    "type": "TypeError",
+    "message": "Cannot read property 'quantity' of undefined",
+    "stack_trace": [
+      "TypeError: Cannot read property 'quantity' of undefined",
+      "    at decrementInventory (src/cart/checkout.ts:42:18)",
+      "    at processCheckout (src/cart/checkout.ts:28:5)",
+      "    at async POST /api/checkout (src/routes/checkout.ts:15:3)"
+    ]
+  },
+  "context": {
+    "user_id": "user_12345",
+    "session_id": "sess_abc123",
+    "request_id": "req_xyz789",
+    "url": "/api/checkout",
+    "method": "POST"
+  },
+  "tags": {
+    "component": "checkout",
+    "feature": "inventory",
+    "impact": "revenue"
+  },
+  "occurrences": 47,
+  "first_seen": "2024-05-14T12:00:00Z",
+  "last_seen": "2024-05-14T12:34:56Z"
+}
