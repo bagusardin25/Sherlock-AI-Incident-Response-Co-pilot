@@ -40,6 +40,17 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     
+    # Authentication Settings
+    secret_key: str = "your-secret-key-change-in-production-min-32-chars"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+    
+    # Google OAuth Settings
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

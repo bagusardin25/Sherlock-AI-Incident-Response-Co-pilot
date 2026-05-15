@@ -129,7 +129,7 @@ export default function IncidentPage() {
     return () => {
       eventSource.close()
     }
-  }, [incidentId, rawInput, repoPath])
+  }, [incidentId])
 
   const getStatusIcon = () => {
     switch (pipelineStatus) {
