@@ -29,7 +29,7 @@ function AuthCallbackContent() {
         localStorage.setItem('refresh_token', refreshToken)
 
         // Fetch user info
-        fetch('http://localhost:8000/api/auth/me', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
