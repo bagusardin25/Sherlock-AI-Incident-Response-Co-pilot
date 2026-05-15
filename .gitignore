@@ -8,10 +8,17 @@ __pycache__/
 *.py[cod]
 venv/
 .venv/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
 
 # Node
 node_modules/
 .next/
+dist/
+build/
+coverage/
 
 # IDE
 .vscode/
@@ -24,3 +31,18 @@ Desktop.ini
 
 .gemini
 design-system
+.bob/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
