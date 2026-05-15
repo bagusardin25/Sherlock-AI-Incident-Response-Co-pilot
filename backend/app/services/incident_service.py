@@ -228,79 +228,86 @@ class IncidentService:
             ForensicsResult as ForensicsResultState,
             RootCauseAnalysis as RootCauseAnalysisState,
             FixProposal as FixProposalState,
+            SuspectFile,
+            CommitInfo,
+            BlameInfo,
+            Severity,
+            ErrorType,
             AgentEvent as AgentEventState,
+            AgentStatus,
         )
-        
-        # Convert triage results
+
+        # Convert triage
         triage_result = None
         if incident.triage_results:
-            latest_triage = incident.triage_results[-1]
+            t = incident.triage_results[-1]
             triage_result = TriageResultState(
-                severity=latest_triage.severity,
-                category=latest_triage.category,
-                summary=latest_triage.summary,
-                recommended_actions=latest_triage.recommended_actions,
-                timestamp=latest_triage.timestamp,
+                severity=Severity(t.severity) if t.severity in [s.value for s in Severity] else Severity.MEDIUM,
+                service=next((a.split(": ", 1)[1] for a in (t.recommended_actions or []) if a.startswith("Service:")), "unknown"),
+                error_type=ErrorType(t.category) if t.category in [e.value for e in ErrorType] else ErrorType.UNKNOWN,
+                summary=t.summary,
+                confidence=float(next((a.split(": ", 1)[1] for a in (t.recommended_actions or []) if a.startswith("Confidence:")), "0.7")),
             )
-        
-        # Convert forensics results
+
+        # Convert forensics
         forensics_result = None
         if incident.forensics_results:
-            latest_forensics = incident.forensics_results[-1]
+            f = incident.forensics_results[-1]
             forensics_result = ForensicsResultState(
-                suspect_files=latest_forensics.suspect_files,
-                git_history=latest_forensics.git_history,
-                blame_info=latest_forensics.blame_info,
-                timestamp=latest_forensics.timestamp,
+                recent_commits=[],
+                blame_info=[],
+                log_excerpts=[],
+                suspect_files=[sf.get("path", "") for sf in (f.suspect_files or [])],
             )
-        
-        # Convert root cause analysis
-        root_cause_analysis = None
+
+        # Convert root cause
+        root_cause = None
         if incident.root_cause_analyses:
-            latest_rca = incident.root_cause_analyses[-1]
-            root_cause_analysis = RootCauseAnalysisState(
-                root_cause=latest_rca.root_cause,
-                contributing_factors=latest_rca.contributing_factors,
-                evidence=latest_rca.evidence,
-                confidence=latest_rca.confidence,
-                timestamp=latest_rca.timestamp,
+            rca = incident.root_cause_analyses[-1]
+            root_cause = RootCauseAnalysisState(
+                root_cause=rca.root_cause,
+                suspect_files=[SuspectFile(path=p, reason="identified", confidence=0.7) for p in (rca.evidence or [])],
+                reasoning_chain=rca.contributing_factors or [],
+                confidence=float(rca.confidence) if rca.confidence.replace(".", "").isdigit() else 0.5,
             )
-        
-        # Convert fix proposal
-        fix_proposal = None
+
+        # Convert fix
+        fix_result = None
         if incident.fix_proposals:
-            latest_fix = incident.fix_proposals[-1]
-            fix_proposal = FixProposalState(
-                description=latest_fix.description,
-                code_changes=latest_fix.code_changes,
-                test_plan=latest_fix.test_plan,
-                rollback_plan=latest_fix.rollback_plan,
-                timestamp=latest_fix.timestamp,
+            fx = incident.fix_proposals[-1]
+            diff = ""
+            if fx.code_changes:
+                diff = fx.code_changes[0].get("diff", "") if fx.code_changes else ""
+            fix_result = FixProposalState(
+                patch_unified_diff=diff,
+                test_code=fx.test_plan[0] if fx.test_plan else None,
+                pr_title=fx.description,
+                pr_body=fx.rollback_plan or "",
+                files_modified=[],
             )
-        
+
         # Convert agent events
         agent_events = [
             AgentEventState(
-                agent=event.agent,
-                event_type=event.event_type,
+                agent_name=event.agent,
+                status=AgentStatus(event.event_type) if event.event_type in [s.value for s in AgentStatus] else AgentStatus.COMPLETED,
                 message=event.message,
                 data=event.data,
-                timestamp=event.timestamp,
             )
             for event in incident.agent_events
         ]
-        
+
         return IncidentState(
             incident_id=incident.id,
-            title=incident.title,
-            description=incident.description,
-            severity=incident.severity,
-            status=incident.status,
-            triage_result=triage_result,
-            forensics_result=forensics_result,
-            root_cause_analysis=root_cause_analysis,
-            fix_proposal=fix_proposal,
+            raw_input=incident.alert_data.get("raw_input", incident.description) if incident.alert_data else incident.description,
+            repo_path=incident.alert_data.get("repo_path") if incident.alert_data else None,
+            triage=triage_result,
+            forensics=forensics_result,
+            root_cause=root_cause,
+            fix=fix_result,
+            postmortem=incident.postmortem_text,
             agent_events=agent_events,
             created_at=incident.created_at,
             updated_at=incident.updated_at,
+            status=incident.status,
         )

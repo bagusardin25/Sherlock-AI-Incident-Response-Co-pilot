@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     bob_cli_path: str = "bob"
     bob_timeout: int = 60
     
+    # OpenRouter Settings
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_timeout: float = 60.0
+
     # Database Settings
     database_url: str = "postgresql+asyncpg://sherlock:sherlock_dev_password@localhost:5432/sherlock_db"
     database_echo: bool = False

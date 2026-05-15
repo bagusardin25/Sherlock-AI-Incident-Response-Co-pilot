@@ -39,6 +39,7 @@ export default function IncidentPage() {
 
   const [pipelineStatus, setPipelineStatus] = useState<'connecting' | 'processing' | 'completed' | 'failed'>('connecting')
   const [error, setError] = useState<string | null>(null)
+  const [postmortem, setPostmortem] = useState<string | null>(null)
 
   useEffect(() => {
     if (!rawInput || !repoPath) {
@@ -209,7 +210,16 @@ export default function IncidentPage() {
               <h3 className="text-lg font-semibold text-white mb-4">Next Steps</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
-                  onClick={() => window.open(`/api/incidents/${incidentId}/postmortem`, '_blank')}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/incidents/${incidentId}/postmortem`)
+                      if (!res.ok) throw new Error('Postmortem not ready yet')
+                      const data = await res.json()
+                      setPostmortem(data.postmortem)
+                    } catch (e: any) {
+                      alert(e.message)
+                    }
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
                 >
                   📄 View Postmortem
@@ -220,6 +230,18 @@ export default function IncidentPage() {
                 >
                   🔍 Analyze Another Incident
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Postmortem Display */}
+        {postmortem && (
+          <div className="max-w-4xl mx-auto mt-6">
+            <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">📄 Postmortem</h3>
+              <div className="prose prose-invert max-w-none text-sm whitespace-pre-wrap text-gray-300">
+                {postmortem}
               </div>
             </div>
           </div>

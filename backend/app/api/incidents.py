@@ -222,10 +222,8 @@ async def get_postmortem(
 ):
     """
     Get postmortem document untuk completed incident.
-    
-    Returns markdown text atau 404 jika belum selesai.
     """
-    incident = await IncidentService.get_incident(db, incident_id, load_relations=True)
+    incident = await IncidentService.get_incident(db, incident_id, load_relations=False)
     
     if not incident:
         raise HTTPException(
@@ -233,9 +231,7 @@ async def get_postmortem(
             detail=f"Incident {incident_id} not found"
         )
     
-    state = await IncidentService.incident_to_state(incident)
-    
-    if not state.postmortem:
+    if not incident.postmortem_text:
         raise HTTPException(
             status_code=404,
             detail=f"Postmortem not yet generated for incident {incident_id}"
@@ -243,5 +239,5 @@ async def get_postmortem(
     
     return {
         "incident_id": incident_id,
-        "postmortem": state.postmortem
+        "postmortem": incident.postmortem_text
     }

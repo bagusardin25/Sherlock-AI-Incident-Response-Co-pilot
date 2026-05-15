@@ -11,6 +11,7 @@ from app.models.state import (
     IncidentState, AgentEvent, AgentStatus
 )
 from app.agents import triage, forensics, bob_analyst, fix, postmortem
+from app.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,9 @@ class PipelineOrchestrator:
             state.status = "completed"
             state.updated_at = datetime.utcnow()
             
+            # Save all results to database
+            await self._save_results_to_db(state)
+            
             completion_event = AgentEvent(
                 agent_name="pipeline",
                 status=AgentStatus.COMPLETED,
@@ -122,9 +126,8 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
-            # Run triage (synchronous)
-            result = await asyncio.to_thread(
-                triage.triage,
+            # Run triage (async - OpenRouter)
+            result = await triage.triage(
                 state.raw_input,
                 state.incident_id
             )
@@ -312,9 +315,8 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
-            # Run postmortem generation (synchronous)
-            result = await asyncio.to_thread(
-                postmortem.generate,
+            # Run postmortem generation (async - OpenRouter)
+            result = await postmortem.generate(
                 state,
                 state.incident_id
             )
@@ -344,6 +346,70 @@ class PipelineOrchestrator:
             yield error_event
             raise
     
+    async def _save_results_to_db(self, state: IncidentState):
+        """Save pipeline results to database"""
+        from app.models.db_models import (
+            Incident, TriageResult as DBTriage, ForensicsResult as DBForensics,
+            RootCauseAnalysis as DBRCA, FixProposal as DBFix,
+        )
+        try:
+            async with AsyncSessionLocal() as db:
+                incident = await db.get(Incident, state.incident_id)
+                if not incident:
+                    logger.error(f"[{state.incident_id}] Incident not found in DB")
+                    return
+
+                incident.status = "completed"
+                incident.updated_at = datetime.utcnow()
+
+                if state.triage:
+                    t = state.triage
+                    db.add(DBTriage(
+                        incident_id=state.incident_id,
+                        severity=t.severity.value,
+                        category=t.error_type.value,
+                        summary=t.summary,
+                        recommended_actions=[f"Service: {t.service}", f"Confidence: {t.confidence}"],
+                    ))
+
+                if state.forensics:
+                    f = state.forensics
+                    db.add(DBForensics(
+                        incident_id=state.incident_id,
+                        suspect_files=[{"path": p} for p in f.suspect_files],
+                        git_history=[c.model_dump(mode="json") for c in f.recent_commits[:10]],
+                        blame_info=[b.model_dump(mode="json") for b in f.blame_info[:10]],
+                    ))
+
+                if state.root_cause:
+                    rc = state.root_cause
+                    db.add(DBRCA(
+                        incident_id=state.incident_id,
+                        root_cause=rc.root_cause,
+                        contributing_factors=rc.reasoning_chain,
+                        evidence=[sf.path for sf in rc.suspect_files],
+                        confidence=str(rc.confidence),
+                    ))
+
+                if state.fix:
+                    fx = state.fix
+                    db.add(DBFix(
+                        incident_id=state.incident_id,
+                        description=fx.pr_title,
+                        code_changes=[{"diff": fx.patch_unified_diff}],
+                        test_plan=[fx.test_code or "No test generated"],
+                        rollback_plan=fx.pr_body[:500],
+                    ))
+
+                if state.postmortem:
+                    incident.postmortem_text = state.postmortem
+
+                await db.commit()
+                logger.info(f"[{state.incident_id}] Results saved to database")
+
+        except Exception as e:
+            logger.error(f"[{state.incident_id}] Failed to save results to DB: {e}")
+
     def get_incident_state(self, incident_id: str) -> Optional[IncidentState]:
         """Get current state untuk incident"""
         return self.active_pipelines.get(incident_id)
