@@ -1,0 +1,27 @@
+{
+  "name": "sherlock-cli",
+  "version": "1.0.0",
+  "description": "Sherlock AI Incident Response Co-pilot CLI",
+  "main": "dist/index.js",
+  "bin": {
+    "sherlock": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "axios": "1.7.9",
+    "chalk": "5.4.1",
+    "commander": "12.1.0",
+    "eventsource": "2.0.2",
+    "ora": "8.1.1"
+  },
+  "devDependencies": {
+    "@types/eventsource": "1.1.15",
+    "@types/node": "22.10.2",
+    "typescript": "5.7.2"
+  },
+  "type": "module"
+}
