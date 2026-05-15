@@ -1,5 +1,5 @@
 """
-Fix Agent - Generate code patch dan test menggunakan Bob
+Fix Agent - Generate code patch dan test powered by IBM Bob
 """
 import logging
 from typing import Optional
@@ -11,14 +11,15 @@ from app.bob_client import ask_bob
 
 logger = logging.getLogger(__name__)
 
+FIX_SYSTEM_PROMPT = """You are IBM Bob, generating production-ready code fixes with full repository context.
+You write minimal, focused patches that address the root cause without introducing new issues.
+You follow existing code style, add proper error handling, and include regression tests when possible.
+Your patches are in unified diff format, applicable with `git apply`."""
+
 
 class FixAgent:
-    """Agent yang menggunakan Bob untuk generate code fix"""
-    
-    def __init__(self):
-        """Initialize Fix Agent"""
-        pass
-    
+    """Agent yang menggunakan IBM Bob untuk generate code fix"""
+
     async def generate_fix(
         self,
         repo_path: str,
@@ -27,175 +28,84 @@ class FixAgent:
         root_cause: RootCauseAnalysis,
         correlation_id: Optional[str] = None
     ) -> FixProposal:
-        """
-        Generate code fix menggunakan Bob.
-        
-        Args:
-            repo_path: Path ke repository
-            triage_result: Result dari triage agent
-            forensics_result: Result dari forensics agent
-            root_cause: Result dari Bob analyst agent
-            correlation_id: Optional ID untuk tracking
-            
-        Returns:
-            FixProposal dengan patch, test, PR description
-        """
         log_prefix = f"[{correlation_id}]" if correlation_id else ""
-        logger.info(f"{log_prefix} Starting fix generation")
-        
-        # Construct prompt untuk Bob
-        prompt = self._construct_fix_prompt(
-            triage_result,
-            forensics_result,
-            root_cause
-        )
-        
-        logger.debug(f"{log_prefix} Fix prompt length: {len(prompt)} chars")
-        
+        logger.info(f"{log_prefix} Starting fix generation (IBM Bob)")
+
+        prompt = self._construct_fix_prompt(triage_result, forensics_result, root_cause)
+
         try:
-            # Call Bob untuk generate fix
             result = await ask_bob(
                 prompt=prompt,
                 repo_path=repo_path,
                 output_schema=FixProposal,
-                correlation_id=correlation_id
+                system_prompt=FIX_SYSTEM_PROMPT,
+                correlation_id=correlation_id,
             )
-            
-            logger.info(
-                f"{log_prefix} Fix generation completed. "
-                f"Files modified: {len(result.files_modified)}"
-            )
-            
+            logger.info(f"{log_prefix} Fix generated. Files modified: {len(result.files_modified)}")
             return result
-            
         except Exception as e:
             logger.error(f"{log_prefix} Fix generation failed: {e}")
-            # Return fallback fix proposal
             return self._create_fallback_fix(root_cause)
-    
+
     def _construct_fix_prompt(
-        self,
-        triage: TriageResult,
-        forensics: ForensicsResult,
-        root_cause: RootCauseAnalysis
+        self, triage: TriageResult, forensics: ForensicsResult, root_cause: RootCauseAnalysis
     ) -> str:
-        """Construct prompt untuk fix generation"""
-        
-        # Format suspect files dengan details
         suspect_files_text = "\n".join([
-            f"- {sf.path}" + (f" (line {sf.line_number})" if sf.line_number else "") + 
-            f": {sf.reason}"
+            f"- {sf.path}" + (f" (line {sf.line_number})" if sf.line_number else "") + f": {sf.reason}"
             for sf in root_cause.suspect_files
         ])
-        
-        # Format reasoning chain
-        reasoning_text = "\n".join([
-            f"{i+1}. {reason}"
-            for i, reason in enumerate(root_cause.reasoning_chain)
-        ])
-        
-        prompt = f"""You are tasked with generating a code fix for a production incident.
+        reasoning_text = "\n".join([f"{i+1}. {r}" for i, r in enumerate(root_cause.reasoning_chain)])
+
+        return f"""Generate a production-ready code fix for this incident.
 
 ## Incident Context
 Severity: {triage.severity.value.upper()}
 Error Type: {triage.error_type.value.replace('_', ' ').title()}
 Service: {triage.service}
 
-## Root Cause Analysis
+## Root Cause
 {root_cause.root_cause}
 
 ## Suspect Files
 {suspect_files_text}
 
-## Reasoning Chain
+## Reasoning
 {reasoning_text}
 
-## Your Task
-Generate a complete fix for this incident including:
-
-1. **Unified Diff Patch**: Generate a unified diff format patch that fixes the root cause. Include proper context lines (3 lines before and after changes). The patch should be applicable with `git apply` or `patch` command.
-
-2. **Test Code** (optional but recommended): Write a test case that would have caught this bug. Include the test framework setup if needed.
-
-3. **PR Title**: Write a concise, descriptive PR title following conventional commit format (e.g., "fix: prevent null pointer in checkout flow").
-
-4. **PR Body**: Write a comprehensive PR description including:
-   - What was the problem?
-   - What is the fix?
-   - How to verify the fix?
-   - Any breaking changes or migration notes?
-
-5. **Files Modified**: List all files that will be modified by this patch.
+## Required Output
+1. **patch_unified_diff**: Unified diff patch fixing the root cause (with 3 lines context)
+2. **test_code**: A regression test that would catch this bug (or null if not applicable)
+3. **pr_title**: Concise PR title in conventional commit format (e.g. "fix: await inventory fetch")
+4. **pr_body**: PR description with problem, fix, and verification steps
+5. **files_modified**: List of file paths modified
 
 Requirements:
-- The fix should be minimal and focused on the root cause
-- Follow the existing code style and patterns in the repository
-- Add appropriate error handling
-- Include comments explaining the fix if the logic is complex
-- Ensure the fix doesn't introduce new issues
+- Minimal, focused fix — only change what's necessary
+- Follow existing code patterns
+- Add error handling where appropriate
+- The patch must be syntactically valid unified diff"""
 
-Be precise and production-ready. This fix will be reviewed and potentially deployed.
-"""
-        
-        return prompt
-    
-    def _create_fallback_fix(
-        self,
-        root_cause: RootCauseAnalysis
-    ) -> FixProposal:
-        """Create fallback fix proposal jika Bob gagal"""
-        
-        # Extract first suspect file
+    def _create_fallback_fix(self, root_cause: RootCauseAnalysis) -> FixProposal:
         first_suspect = root_cause.suspect_files[0] if root_cause.suspect_files else None
-        
-        if first_suspect:
-            file_path = first_suspect.path
-            files_modified = [file_path]
-            
-            patch = f"""--- a/{file_path}
+        file_path = first_suspect.path if first_suspect else "unknown"
+        files_modified = [file_path] if first_suspect else []
+
+        patch = f"""--- a/{file_path}
 +++ b/{file_path}
 @@ -1,3 +1,4 @@
 +// TODO: Fix required - {root_cause.root_cause}
  // Automated fix generation failed
  // Manual intervention required
- // See root cause analysis for details
 """
-        else:
-            files_modified = []
-            patch = "# Automated fix generation failed - manual intervention required"
-        
-        pr_title = f"fix: address {root_cause.root_cause[:50]}..."
-        
-        nl = "\n"
-        reasoning_list = nl.join(f"- {r}" for r in root_cause.reasoning_chain)
-        suspect_list = nl.join(f"- {sf.path}" for sf in root_cause.suspect_files)
-        
-        pr_body = f"""## Problem
-{root_cause.root_cause}
-
-## Root Cause Analysis
-{reasoning_list}
-
-## Fix
-⚠️ Automated fix generation was not successful. Manual code review and fix required.
-
-## Suspect Files
-{suspect_list}
-
-## Action Required
-Please review the root cause analysis and implement an appropriate fix.
-"""
-        
         return FixProposal(
             patch_unified_diff=patch,
             test_code=None,
-            pr_title=pr_title,
-            pr_body=pr_body,
-            files_modified=files_modified
+            pr_title=f"fix: address {root_cause.root_cause[:50]}",
+            pr_body=f"## Problem\n{root_cause.root_cause}\n\n## Action Required\nManual fix needed.",
+            files_modified=files_modified,
         )
 
 
-# Global instance
 fix_agent = FixAgent()
 
 
@@ -206,21 +116,4 @@ async def generate_fix(
     root_cause: RootCauseAnalysis,
     correlation_id: Optional[str] = None
 ) -> FixProposal:
-    """
-    Convenience function untuk fix generation.
-    
-    Usage:
-        result = await generate_fix(
-            "/path/to/repo",
-            triage_result,
-            forensics_result,
-            root_cause
-        )
-    """
-    return await fix_agent.generate_fix(
-        repo_path,
-        triage_result,
-        forensics_result,
-        root_cause,
-        correlation_id
-    )
+    return await fix_agent.generate_fix(repo_path, triage_result, forensics_result, root_cause, correlation_id)

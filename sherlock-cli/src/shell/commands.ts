@@ -1,4 +1,3 @@
-import readline from "readline";
 import fs from "fs";
 import chalk from "chalk";
 
@@ -17,7 +16,7 @@ import { useMock } from "../services/client.js";
 import { getIncidentState, listIncidents, getPostmortem } from "../services/api.js";
 import { mockIncidentList, mockIncidentState, mockPostmortem } from "../services/mock.js";
 
-import { blank, failure, info, success, warn } from "./render.js";
+import { agentTag, blank, failure, info, rule, success, warn } from "./render.js";
 import { viewIncidentList, viewIncidentDetail, viewFix, viewPostmortem } from "./views.js";
 import { runResolvePipeline } from "./pipeline.js";
 import { getSession, refreshAuth } from "./session.js";
@@ -25,7 +24,14 @@ import { openUrl } from "../utils/opener.js";
 
 export type DispatchResult = "continue" | "exit";
 
-type Handler = (args: string[], rl: readline.Interface) => Promise<DispatchResult>;
+/**
+ * Generic prompt function. The shell injects an inquirer-backed implementation;
+ * other surfaces could plug in something else. `mask: true` requests password-style
+ * input.
+ */
+export type AskFn = (question: string, opts?: { mask?: boolean }) => Promise<string>;
+
+type Handler = (args: string[], ask: AskFn) => Promise<DispatchResult>;
 
 // ─── command parsing ──────────────────────────────────────────────────────────
 
@@ -42,14 +48,6 @@ export function parseLine(raw: string): ParsedCommand | null {
   }
   const parts = trimmed.slice(1).split(/\s+/);
   return { name: parts[0]?.toLowerCase() ?? "", args: parts.slice(1) };
-}
-
-// ─── prompt helper that reuses the live readline interface ───────────────────
-
-function ask(rl: readline.Interface, question: string): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => resolve(answer.trim()));
-  });
 }
 
 // ─── dashboard URL resolution ────────────────────────────────────────────────
@@ -74,6 +72,7 @@ const helpHandler: Handler = async () => {
   console.log(`    ${chalk.cyan("/postmortem")} ${chalk.dim("[id]")}       Show incident report`);
   console.log(`    ${chalk.cyan("/open")} ${chalk.dim("[id]")}             Open incident in web dashboard`);
   console.log(`    ${chalk.cyan("/history")}                Show this session's incidents`);
+  console.log(`    ${chalk.cyan("/agents")}                 Show the multi-agent pipeline`);
   console.log("");
   console.log(`    ${chalk.cyan("/auth login")}             Authenticate the CLI`);
   console.log(`    ${chalk.cyan("/auth status")}            Show authentication status`);
@@ -100,21 +99,24 @@ const clearHandler: Handler = async () => {
   return "continue";
 };
 
-const resolveHandler: Handler = async (args) => {
-  if (args.length === 0) {
-    warn("Usage: /resolve <file-or-text> [--repo <url>]");
+const resolveHandler: Handler = async (args, ask) => {
+  let target = args.join(" ").trim();
+  if (!target) {
+    target = await ask("Enter log file or paste stack trace:");
+  }
+  if (!target) {
+    warn("No input provided.");
     return "continue";
   }
 
   // Pull optional --repo <url>
   let repoUrl = "https://github.com/org/service";
-  const repoIdx = args.findIndex((a) => a === "--repo");
-  if (repoIdx !== -1 && args[repoIdx + 1]) {
-    repoUrl = args[repoIdx + 1];
-    args.splice(repoIdx, 2);
+  const repoMatch = target.match(/--repo\s+(\S+)/);
+  if (repoMatch) {
+    repoUrl = repoMatch[1];
+    target = target.replace(repoMatch[0], "").trim();
   }
 
-  const target = args.join(" ");
   let rawInput: string;
   if (fs.existsSync(target)) {
     try {
@@ -133,10 +135,23 @@ const resolveHandler: Handler = async (args) => {
   return "continue";
 };
 
-const statusHandler: Handler = async (args) => {
+async function resolveIncidentId(args: string[], ask: AskFn, action: string): Promise<string | null> {
   const sess = getSession();
-  const id = args[0] ?? sess.activeIncident;
+  if (args[0]) return args[0];
+  if (sess.activeIncident) return sess.activeIncident;
+
+  const id = (await ask(`Incident ID for ${action}:`)).trim();
+  if (!id) return null;
+  return id;
+}
+
+const statusHandler: Handler = async (args, ask) => {
+  const sess = getSession();
   const mock = await useMock();
+
+  // If user passes an id, or has an active incident, show detail.
+  // Otherwise, show the list (no need to prompt).
+  const id = args[0] ?? sess.activeIncident;
 
   if (id) {
     let state: any;
@@ -161,11 +176,10 @@ const statusHandler: Handler = async (args) => {
   return "continue";
 };
 
-const fixHandler: Handler = async (args) => {
-  const sess = getSession();
-  const id = args[0] ?? sess.activeIncident;
+const fixHandler: Handler = async (args, ask) => {
+  const id = await resolveIncidentId(args, ask, "fix");
   if (!id) {
-    warn("No active incident. Run /resolve <file> or /fix <incident-id>.");
+    warn("No incident ID provided.");
     return "continue";
   }
 
@@ -181,11 +195,10 @@ const fixHandler: Handler = async (args) => {
   return "continue";
 };
 
-const postmortemHandler: Handler = async (args) => {
-  const sess = getSession();
-  const id = args[0] ?? sess.activeIncident;
+const postmortemHandler: Handler = async (args, ask) => {
+  const id = await resolveIncidentId(args, ask, "postmortem");
   if (!id) {
-    warn("No active incident. Run /resolve <file> or /postmortem <incident-id>.");
+    warn("No incident ID provided.");
     return "continue";
   }
 
@@ -231,7 +244,7 @@ const historyHandler: Handler = async () => {
   return "continue";
 };
 
-const openHandler: Handler = async (args) => {
+const openHandler: Handler = async (args, ask) => {
   const sess = getSession();
   const id = args[0] ?? sess.activeIncident;
   const base = dashboardBaseUrl();
@@ -252,16 +265,38 @@ const openHandler: Handler = async (args) => {
     success("Launched.");
   }
   blank();
+  // ask is unused here but kept for handler signature uniformity
+  void ask;
+  return "continue";
+};
+
+const agentsHandler: Handler = async () => {
+  blank();
+  console.log(chalk.bold.white("  Multi-agent Pipeline"));
+  rule(40);
+  const agents: Array<[string, string, string]> = [
+    ["TRIAGE", "Severity, service, error type classification", " "],
+    ["FORENSICS", "Git history, blame, suspect commits & files", " "],
+    ["ANALYST", "Code-level reasoning over the repo with IBM Bob", "⭐"],
+    ["FIX", "Generate unified-diff patch + regression test (Bob)", "⭐"],
+    ["POSTMORTEM", "Aggregate findings into incident report", " "],
+  ];
+  for (const [name, desc, marker] of agents) {
+    console.log(`  ${chalk.cyan.bold(`[${name.padEnd(11)}]`)} ${marker} ${chalk.white(desc)}`);
+  }
+  blank();
+  console.log(chalk.dim("  ⭐ = Powered by IBM Bob repository intelligence"));
+  blank();
   return "continue";
 };
 
 // ─── auth slash commands ──────────────────────────────────────────────────────
 
-const authHandler: Handler = async (args, rl) => {
+const authHandler: Handler = async (args, ask) => {
   const sub = args[0]?.toLowerCase();
   switch (sub) {
     case "login":
-      return authLogin(args.slice(1), rl);
+      return authLogin(args.slice(1), ask);
     case "status":
       return authStatus();
     case "logout":
@@ -272,7 +307,7 @@ const authHandler: Handler = async (args, rl) => {
   }
 };
 
-async function authLogin(args: string[], rl: readline.Interface): Promise<DispatchResult> {
+async function authLogin(args: string[], ask: AskFn): Promise<DispatchResult> {
   let apiUrl = "http://localhost:8000";
   const idx = args.findIndex((a) => a === "--api-url");
   if (idx !== -1 && args[idx + 1]) apiUrl = args[idx + 1];
@@ -283,7 +318,7 @@ async function authLogin(args: string[], rl: readline.Interface): Promise<Dispat
   console.log(chalk.dim("Dashboard → Settings → API Keys"));
   console.log("");
 
-  const apiKey = await ask(rl, "Enter API key: ");
+  const apiKey = await ask("Enter API key:", { mask: true });
   if (!apiKey || (!apiKey.startsWith("sk_sherlock_") && !apiKey.startsWith("sk-"))) {
     blank();
     failure("Invalid API key format");
@@ -318,7 +353,7 @@ async function authStatus(): Promise<DispatchResult> {
   } else {
     blank();
     warn("Not authenticated");
-    info("Run: /auth login");
+    info("Run /auth login");
     blank();
   }
   return "continue";
@@ -354,10 +389,11 @@ const HANDLERS: Record<string, Handler> = {
   postmortem: postmortemHandler,
   history: historyHandler,
   open: openHandler,
+  agents: agentsHandler,
   auth: authHandler,
 };
 
-export async function dispatchCommand(line: string, rl: readline.Interface): Promise<DispatchResult> {
+export async function dispatchCommand(line: string, ask: AskFn): Promise<DispatchResult> {
   const parsed = parseLine(line);
   if (!parsed) return "continue";
   if (parsed.name === "_unknown") {
@@ -371,9 +407,12 @@ export async function dispatchCommand(line: string, rl: readline.Interface): Pro
     return "continue";
   }
   try {
-    return await handler(parsed.args, rl);
+    return await handler(parsed.args, ask);
   } catch (err: any) {
     failure(`Command failed: ${err.message ?? err}`);
     return "continue";
   }
 }
+
+// agentTag is referenced by viewPostmortem at runtime; suppress unused-import warning.
+void agentTag;

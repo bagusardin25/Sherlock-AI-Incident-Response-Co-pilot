@@ -175,9 +175,8 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
-            # Run forensics (synchronous)
-            result = await asyncio.to_thread(
-                forensics.analyze,
+            # Run forensics (async with AI reasoning)
+            result = await forensics.analyze(
                 state.repo_path,
                 state.triage,
                 state.incident_id
