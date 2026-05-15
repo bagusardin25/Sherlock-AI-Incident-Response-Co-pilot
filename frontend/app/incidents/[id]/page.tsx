@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import AgentCard from '@/components/AgentCard'
 import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp } from 'lucide-react'
 
@@ -24,10 +24,7 @@ interface AgentState {
 
 export default function IncidentPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
   const incidentId = params.id as string
-  const rawInput = searchParams.get('raw_input') || ''
-  const repoPath = searchParams.get('repo_path') || ''
 
   const [agents, setAgents] = useState<Record<string, AgentState>>({
     triage: { name: 'Triage Agent', status: 'pending', message: 'Waiting to start...' },
@@ -52,14 +49,9 @@ export default function IncidentPage() {
   }, [startTime])
 
   useEffect(() => {
-    if (!rawInput || !repoPath) {
-      setError('Missing required parameters')
-      return
-    }
-
-    // Connect to SSE stream
+    // Connect to SSE stream (backend reads raw_input & repo_path from DB)
     const eventSource = new EventSource(
-      `/api/incidents/${incidentId}/stream?raw_input=${encodeURIComponent(rawInput)}&repo_path=${encodeURIComponent(repoPath)}`
+      `/api/incidents/${incidentId}/stream?raw_input=`
     )
 
     eventSource.onopen = () => {

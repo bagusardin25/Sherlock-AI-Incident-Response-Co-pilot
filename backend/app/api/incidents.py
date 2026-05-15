@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.incident_service import IncidentService
+from app.services.repo_manager import repo_manager, RepoManagerError
 from app.orchestrator.pipeline import orchestrator, run_incident_analysis
 from app.models.state import IncidentState
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 class IncidentSubmission(BaseModel):
     """Request model untuk submit incident"""
     raw_input: str = Field(..., description="Raw alert/error text")
-    repo_path: str = Field(..., description="Path to repository for analysis")
+    repo_url: str = Field(..., description="GitHub repository URL (e.g. https://github.com/user/repo)")
     incident_id: Optional[str] = Field(None, description="Optional custom incident ID")
 
 
@@ -41,46 +42,47 @@ async def submit_incident(
 ):
     """
     Submit new incident untuk analysis.
-    
-    Returns incident_id dan URL untuk streaming progress.
+    Clones the GitHub repo, then returns incident_id dan URL untuk streaming progress.
     """
-    # Generate incident ID jika tidak provided
+    # Generate incident ID
     incident_id = submission.incident_id or f"inc-{uuid.uuid4().hex[:8]}"
     
     logger.info(f"[{incident_id}] New incident submitted")
-    
+
+    # Validate and clone repo
+    if not repo_manager.validate_url(submission.repo_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid GitHub URL. Please use format: https://github.com/owner/repository"
+        )
+
+    try:
+        repo_path = repo_manager.clone(submission.repo_url, incident_id)
+    except RepoManagerError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     # Create incident in database
     try:
         await IncidentService.create_incident(
             db=db,
             incident_id=incident_id,
             title=f"Incident {incident_id}",
-            description=submission.raw_input[:500],  # Truncate for title
+            description=submission.raw_input[:500],
             severity="unknown",
             alert_data={
                 "raw_input": submission.raw_input,
-                "repo_path": submission.repo_path
+                "repo_url": submission.repo_url,
+                "repo_path": repo_path,
             }
         )
         await db.commit()
         
-        # Log agent event
-        await IncidentService.add_agent_event(
-            db=db,
-            incident_id=incident_id,
-            agent="api",
-            event_type="incident_created",
-            message="Incident submitted via API",
-            data={"repo_path": submission.repo_path}
-        )
-        await db.commit()
-        
     except Exception as e:
+        repo_manager.cleanup(incident_id)
         logger.error(f"[{incident_id}] Failed to create incident: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create incident: {str(e)}")
     
-    # Return response dengan stream URL
     return IncidentResponse(
         incident_id=incident_id,
         status="processing",
@@ -92,31 +94,30 @@ async def submit_incident(
 @router.get("/{incident_id}/stream")
 async def stream_incident_analysis(
     incident_id: str,
-    raw_input: str = Query(..., description="Raw alert text"),
-    repo_path: str = Query(..., description="Repository path"),
+    raw_input: str = Query("", description="Raw alert text (optional, read from DB)"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Stream incident analysis progress via Server-Sent Events (SSE).
-    
-    Client should connect to this endpoint after submitting incident.
     """
     logger.info(f"[{incident_id}] Starting SSE stream")
     
-    # Verify incident exists
+    # Get incident from DB to retrieve repo_path and raw_input
     incident = await IncidentService.get_incident(db, incident_id, load_relations=False)
     if not incident:
         raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+
+    alert_data = incident.alert_data or {}
+    actual_repo_path = alert_data.get("repo_path", "")
+    actual_raw_input = raw_input or alert_data.get("raw_input", "")
     
     async def event_generator():
         """Generate SSE events dari pipeline"""
         try:
-            async for event in run_incident_analysis(raw_input, repo_path, incident_id):
-                # Format as SSE
+            async for event in run_incident_analysis(actual_raw_input, actual_repo_path, incident_id):
                 event_data = event.model_dump_json()
                 yield f"data: {event_data}\n\n"
             
-            # Send completion marker
             yield "data: {\"type\": \"complete\"}\n\n"
             
         except Exception as e:

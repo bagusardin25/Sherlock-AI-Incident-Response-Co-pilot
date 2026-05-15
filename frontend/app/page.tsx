@@ -7,7 +7,7 @@ import { Search, Zap, GitBranch, FileText, AlertCircle, Sparkles, ArrowRight, Co
 export default function Home() {
   const router = useRouter()
   const [rawInput, setRawInput] = useState('')
-  const [repoPath, setRepoPath] = useState('../fixtures/flaky-shop')
+  const [repoUrl, setRepoUrl] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,20 +28,19 @@ export default function Home() {
         },
         body: JSON.stringify({
           raw_input: rawInput,
-          repo_path: repoPath,
+          repo_url: repoUrl,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit incident')
+        const err = await response.json()
+        throw new Error(err.detail || 'Failed to submit incident')
       }
 
       const data = await response.json()
       
-      // Navigate to incident page with query params
-      router.push(
-        `/incidents/${data.incident_id}?raw_input=${encodeURIComponent(rawInput)}&repo_path=${encodeURIComponent(repoPath)}`
-      )
+      // Navigate to incident page
+      router.push(`/incidents/${data.incident_id}`)
     } catch (error) {
       console.error('Error submitting incident:', error)
       alert('Failed to submit incident. Please try again.')
@@ -211,23 +210,23 @@ Occurrences: 47 times in last hour`)
                   </div>
                 </div>
 
-                {/* Repo Path */}
+                {/* Repo URL */}
                 <div className="space-y-3">
                   <label htmlFor="repo" className="block text-sm font-medium text-gray-300">
-                    Repository Path
+                    GitHub Repository URL
                   </label>
                   <input
                     id="repo"
-                    type="text"
-                    value={repoPath}
-                    onChange={(e) => setRepoPath(e.target.value)}
-                    placeholder="/path/to/repository"
+                    type="url"
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    placeholder="https://github.com/user/repository"
                     className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     required
                   />
                   <p className="text-xs text-gray-500 flex items-center gap-2">
                     <AlertCircle className="w-3 h-3" />
-                    Path to the repository for analysis (relative or absolute)
+                    Public GitHub repository URL — Sherlock will clone and analyze it
                   </p>
                 </div>
 

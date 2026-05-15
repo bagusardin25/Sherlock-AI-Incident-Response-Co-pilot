@@ -12,6 +12,7 @@ from app.models.state import (
 )
 from app.agents import triage, forensics, bob_analyst, fix, postmortem
 from app.database import AsyncSessionLocal
+from app.services.repo_manager import repo_manager
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ class PipelineOrchestrator:
         
         finally:
             # Cleanup
+            repo_manager.cleanup(incident_id)
             if incident_id in self.active_pipelines:
                 del self.active_pipelines[incident_id]
     
