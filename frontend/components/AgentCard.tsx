@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle2, Clock, XCircle, Loader2, ChevronDown, ChevronUp, Terminal } from 'lucide-react'
 import { useState } from 'react'
 
 interface AgentCardProps {
@@ -15,13 +15,13 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
   const getStatusColor = () => {
     switch (status) {
       case 'pending':
-        return 'border-white/10 bg-slate-800/30'
+        return 'border-white/5 bg-slate-900/40 text-slate-400'
       case 'running':
-        return 'border-blue-500/30 bg-gradient-to-r from-blue-900/30 to-purple-900/30 shadow-lg shadow-blue-500/20'
+        return 'border-primary/30 bg-slate-900/60 shadow-[0_0_30px_rgba(59,130,246,0.1)] text-primary'
       case 'completed':
-        return 'border-green-500/30 bg-gradient-to-r from-green-900/30 to-emerald-900/30 shadow-lg shadow-green-500/20'
+        return 'border-emerald-500/30 bg-slate-900/60 shadow-[0_0_30px_rgba(16,185,129,0.05)] text-emerald-400'
       case 'failed':
-        return 'border-red-500/30 bg-gradient-to-r from-red-900/30 to-pink-900/30 shadow-lg shadow-red-500/20'
+        return 'border-red-500/30 bg-slate-900/60 shadow-[0_0_30px_rgba(239,68,68,0.05)] text-red-400'
     }
   }
 
@@ -29,25 +29,26 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
     switch (status) {
       case 'pending':
         return (
-          <div className="w-10 h-10 bg-slate-700/50 rounded-xl flex items-center justify-center">
-            <Clock className="w-5 h-5 text-gray-400" />
+          <div className="w-10 h-10 bg-slate-800/50 rounded-xl flex items-center justify-center border border-white/5">
+            <Clock className="w-5 h-5 text-slate-500" />
           </div>
         )
       case 'running':
         return (
-          <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center animate-pulse">
-            <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 relative">
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+            <div className="absolute -inset-1 bg-primary/20 blur-md rounded-xl animate-pulse"></div>
           </div>
         )
       case 'completed':
         return (
-          <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5 text-green-400" />
+          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
           </div>
         )
       case 'failed':
         return (
-          <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center border border-red-500/20">
             <XCircle className="w-5 h-5 text-red-400" />
           </div>
         )
@@ -56,15 +57,15 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
   const getStatusBadge = () => {
     const badges = {
-      pending: 'bg-slate-700/50 text-gray-300 border-slate-600/50',
-      running: 'bg-blue-500/20 text-blue-300 border-blue-500/30 animate-pulse',
-      completed: 'bg-green-500/20 text-green-300 border-green-500/30',
-      failed: 'bg-red-500/20 text-red-300 border-red-500/30',
+      pending: 'bg-slate-800/50 text-slate-400 border-white/5',
+      running: 'bg-primary/10 text-primary border-primary/20 animate-pulse',
+      completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      failed: 'bg-red-500/10 text-red-400 border-red-500/20',
     }
 
     return (
-      <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${badges[status]}`}>
-        {status.toUpperCase()}
+      <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold border ${badges[status]}`}>
+        {status}
       </span>
     )
   }
@@ -73,58 +74,63 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
     if (!data || status !== 'completed') return null
 
     return (
-      <div className="mt-4 pt-4 border-t border-white/10">
+      <div className="mt-5 pt-4 border-t border-white/5">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-between w-full text-left mb-3 hover:text-blue-400 transition-colors"
+          className="flex items-center justify-between w-full text-left mb-4 group"
         >
-          <h4 className="text-sm font-semibold text-gray-300">Analysis Results</h4>
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-gray-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          )}
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
+            <h4 className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">Analysis Output</h4>
+          </div>
+          <div className="p-1 rounded bg-slate-800/50 group-hover:bg-slate-800 transition-colors">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
+          </div>
         </button>
 
         {isExpanded && (
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-4 text-sm border border-white/10 space-y-3 animate-slide-down">
+          <div className="bg-slate-950/50 rounded-xl p-5 text-sm border border-white/5 space-y-4 animate-slide-down font-mono">
             {/* Triage Data */}
             {data.severity && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Severity:</span>
-                  <span className={`font-bold px-2 py-1 rounded ${
-                    data.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
-                    data.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                    data.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-green-500/20 text-green-400'
+                  <span className="text-slate-500">Severity:</span>
+                  <span className={`font-bold px-2 py-0.5 rounded text-xs ${
+                    data.severity === 'critical' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                    data.severity === 'high' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                    data.severity === 'medium' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                    'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   }`}>
                     {data.severity.toUpperCase()}
                   </span>
                 </div>
                 {data.error_type && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Error Type:</span>
-                    <span className="text-gray-300 font-mono text-xs">{data.error_type}</span>
+                    <span className="text-slate-500">Error Type:</span>
+                    <span className="text-slate-300 text-xs bg-slate-800/50 px-2 py-1 rounded border border-white/5">{data.error_type}</span>
                   </div>
                 )}
                 {data.service && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Service:</span>
-                    <span className="text-gray-300">{data.service}</span>
+                    <span className="text-slate-500">Service:</span>
+                    <span className="text-slate-300">{data.service}</span>
                   </div>
                 )}
                 {data.confidence && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Confidence:</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <span className="text-slate-500">Confidence:</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                          className="h-full bg-primary"
                           style={{ width: `${data.confidence * 100}%` }}
                         />
                       </div>
-                      <span className="text-gray-300 font-semibold">{(data.confidence * 100).toFixed(0)}%</span>
+                      <span className="text-slate-300 text-xs">{(data.confidence * 100).toFixed(0)}%</span>
                     </div>
                   </div>
                 )}
@@ -133,25 +139,25 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
             {/* Forensics Data */}
             {data.commits_count !== undefined && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
-                    <div className="text-2xl font-bold text-blue-400">{data.commits_count}</div>
-                    <div className="text-xs text-gray-400">Recent Commits</div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900 rounded-lg p-4 border border-white/5">
+                    <div className="text-2xl font-bold text-primary mb-1">{data.commits_count}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Recent Commits</div>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
-                    <div className="text-2xl font-bold text-purple-400">{data.suspect_files?.length || 0}</div>
-                    <div className="text-xs text-gray-400">Suspect Files</div>
+                  <div className="bg-slate-900 rounded-lg p-4 border border-white/5">
+                    <div className="text-2xl font-bold text-secondary mb-1">{data.suspect_files?.length || 0}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Suspect Files</div>
                   </div>
                 </div>
                 {data.suspect_files && data.suspect_files.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-gray-500 mb-2">Affected Files:</p>
-                    <div className="space-y-1">
+                  <div className="mt-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-3">Affected Files:</p>
+                    <div className="space-y-2">
                       {data.suspect_files.slice(0, 3).map((file: string, i: number) => (
-                        <div key={i} className="flex items-center gap-2 text-xs">
-                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                          <span className="font-mono text-gray-400">{file}</span>
+                        <div key={i} className="flex items-center gap-3 text-xs bg-slate-900/50 p-2 rounded border border-white/5">
+                          <div className="w-1 h-1 bg-secondary rounded-full"></div>
+                          <span className="text-slate-300 break-all">{file}</span>
                         </div>
                       ))}
                     </div>
@@ -162,14 +168,14 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
             {/* Bob Analyst Data */}
             {data.root_cause && (
-              <div className="space-y-2">
-                <div className="bg-slate-800/50 rounded-lg p-4 border border-white/10">
-                  <p className="text-gray-300 leading-relaxed">{data.root_cause}</p>
+              <div className="space-y-3">
+                <div className="bg-slate-900/80 rounded-lg p-4 border border-white/5">
+                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{data.root_cause}</p>
                 </div>
                 {data.confidence && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Analysis Confidence:</span>
-                    <span className="text-blue-400 font-semibold">{(data.confidence * 100).toFixed(0)}%</span>
+                  <div className="flex items-center justify-between text-xs pt-2">
+                    <span className="text-slate-500">Analysis Confidence:</span>
+                    <span className="text-primary">{(data.confidence * 100).toFixed(0)}%</span>
                   </div>
                 )}
               </div>
@@ -177,19 +183,19 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
             {/* Fix Data */}
             {data.pr_title && (
-              <div className="space-y-2">
-                <div className="bg-slate-800/50 rounded-lg p-4 border border-white/10">
-                  <p className="text-gray-300 font-medium mb-2">{data.pr_title}</p>
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400">Files:</span>
-                      <span className="text-blue-400 font-semibold">{data.files_modified?.length || 0}</span>
+              <div className="space-y-3">
+                <div className="bg-slate-900/80 rounded-lg p-4 border border-white/5">
+                  <p className="text-white text-sm font-semibold mb-3 pb-3 border-b border-white/5">{data.pr_title}</p>
+                  <div className="flex items-center gap-6 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">Files modified:</span>
+                      <span className="text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded">{data.files_modified?.length || 0}</span>
                     </div>
                     {data.has_test !== undefined && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-400">Tests:</span>
-                        <span className={data.has_test ? 'text-green-400' : 'text-red-400'}>
-                          {data.has_test ? '✓ Included' : '✗ Missing'}
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500">Tests:</span>
+                        <span className={`font-bold px-1.5 py-0.5 rounded ${data.has_test ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                          {data.has_test ? 'Included' : 'Missing'}
                         </span>
                       </div>
                     )}
@@ -200,14 +206,14 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
             {/* Postmortem Data */}
             {data.length && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
-                  <div className="text-xl font-bold text-purple-400">{data.length}</div>
-                  <div className="text-xs text-gray-400">Characters</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-900 rounded-lg p-4 border border-white/5">
+                  <div className="text-xl font-bold text-secondary mb-1">{data.length}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Characters</div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
-                  <div className="text-xl font-bold text-pink-400">{data.sections}</div>
-                  <div className="text-xs text-gray-400">Sections</div>
+                <div className="bg-slate-900 rounded-lg p-4 border border-white/5">
+                  <div className="text-xl font-bold text-primary mb-1">{data.sections}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Sections</div>
                 </div>
               </div>
             )}
@@ -219,21 +225,16 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
   return (
     <div
-      className={`relative border rounded-2xl p-6 transition-all duration-500 backdrop-blur-xl ${getStatusColor()} animate-slide-in hover:scale-[1.02]`}
+      className={`relative border rounded-2xl p-5 md:p-6 transition-all duration-300 backdrop-blur-xl ${getStatusColor()} animate-slide-in hover:border-white/10`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      {/* Glow effect for running state */}
-      {status === 'running' && (
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl animate-pulse"></div>
-      )}
-
-      <div className="relative">
-        <div className="flex items-start justify-between mb-3">
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-1">
           <div className="flex items-center gap-4 flex-1">
             {getStatusIcon()}
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">{name}</h3>
-              <p className="text-sm text-gray-400">{message}</p>
+              <h3 className="text-base font-bold text-white mb-1">{name}</h3>
+              <p className="text-sm text-slate-400">{message}</p>
             </div>
           </div>
           {getStatusBadge()}
@@ -243,10 +244,8 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
 
         {/* Progress indicator for running state */}
         {status === 'running' && (
-          <div className="mt-4">
-            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 animate-progress" />
-            </div>
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800 rounded-b-2xl overflow-hidden">
+            <div className="h-full bg-primary animate-progress shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
           </div>
         )}
       </div>
@@ -255,7 +254,7 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
         @keyframes slide-in {
           from {
             opacity: 0;
-            transform: translateX(-20px);
+            transform: translateX(-10px);
           }
           to {
             opacity: 1;
@@ -265,7 +264,7 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
         @keyframes slide-down {
           from {
             opacity: 0;
-            transform: translateY(-10px);
+            transform: translateY(-5px);
           }
           to {
             opacity: 1;
@@ -277,13 +276,15 @@ export default function AgentCard({ name, status, message, data, index }: AgentC
           100% { transform: translateX(100%); }
         }
         .animate-slide-in {
-          animation: slide-in 0.5s ease-out;
+          animation: slide-in 0.4s ease-out forwards;
+          opacity: 0;
         }
         .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
+          animation: slide-down 0.2s ease-out;
         }
         .animate-progress {
-          animation: progress 1.5s ease-in-out infinite;
+          animation: progress 2s ease-in-out infinite;
+          width: 50%;
         }
       `}</style>
     </div>

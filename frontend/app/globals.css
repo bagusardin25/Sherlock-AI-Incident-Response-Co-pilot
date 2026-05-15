@@ -3,23 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Using light mode defaults from the generated design system */
+  --background: #FAF5FF;
+  --foreground: #4C1D95;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Keeping the original dark background but adjusting for dark mode */
+    --background: #020617;
+    --foreground: #f8fafc;
+  }
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background-color: var(--background);
+  /* Tech grid background tinted with primary */
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.1) 0%, transparent 70%),
+    linear-gradient(rgba(124, 58, 237, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
 }
 
 /* Custom scrollbar */
@@ -29,53 +36,37 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #404040;
+  background: #7C3AED80; /* semi-transparent primary */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #505050;
-}
-
-/* Animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
+  background: #7C3AED;
 }
 
 /* Markdown styles */
 .markdown-content {
-  @apply text-gray-300;
+  @apply text-foreground;
 }
 
 .markdown-content h1 {
-  @apply text-3xl font-bold mb-4 text-white;
+  @apply text-3xl font-bold mb-4;
 }
 
 .markdown-content h2 {
-  @apply text-2xl font-bold mb-3 mt-6 text-white;
+  @apply text-2xl font-bold mb-3 mt-6;
 }
 
 .markdown-content h3 {
-  @apply text-xl font-bold mb-2 mt-4 text-white;
+  @apply text-xl font-bold mb-2 mt-4;
 }
 
 .markdown-content p {
-  @apply mb-4;
+  @apply mb-4 leading-relaxed;
 }
 
 .markdown-content ul {
@@ -87,33 +78,37 @@ code {
 }
 
 .markdown-content code {
-  @apply bg-gray-800 px-1 py-0.5 rounded text-sm text-blue-400;
+  @apply bg-primary/10 px-1.5 py-0.5 rounded text-sm text-primary font-mono;
 }
 
 .markdown-content pre {
-  @apply bg-gray-900 p-4 rounded-lg overflow-x-auto mb-4;
+  @apply bg-slate-900 p-4 rounded-lg overflow-x-auto mb-4 border border-slate-800;
 }
 
 .markdown-content pre code {
-  @apply bg-transparent p-0 text-gray-300;
+  @apply bg-transparent p-0 text-slate-300;
 }
 
 .markdown-content a {
-  @apply text-blue-400 hover:text-blue-300 underline;
+  @apply text-accent hover:underline transition-colors;
 }
 
 .markdown-content blockquote {
-  @apply border-l-4 border-gray-600 pl-4 italic my-4;
+  @apply border-l-4 border-primary pl-4 italic my-4 opacity-80 text-foreground;
 }
 
 .markdown-content table {
-  @apply w-full border-collapse mb-4;
+  @apply w-full border-collapse mb-4 text-sm;
 }
 
 .markdown-content th {
-  @apply bg-gray-800 p-2 text-left font-bold;
+  @apply bg-primary/10 p-3 text-left font-semibold border-b border-primary/20;
 }
 
 .markdown-content td {
-  @apply border border-gray-700 p-2;
+  @apply border-b border-slate-800/50 p-3;
+}
+
+.markdown-content tr:hover {
+  @apply bg-primary/5 transition-colors;
 }

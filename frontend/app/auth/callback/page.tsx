@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -59,35 +59,52 @@ export default function AuthCallbackPage() {
   }, [searchParams, router])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-4">
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl"></div>
-        <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-12 shadow-2xl text-center">
-          {status === 'loading' && (
-            <>
-              <Loader2 className="w-16 h-16 text-blue-400 animate-spin mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Processing</h2>
-              <p className="text-gray-400">{message}</p>
-            </>
-          )}
-          
-          {status === 'success' && (
-            <>
-              <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Success!</h2>
-              <p className="text-gray-400">{message}</p>
-            </>
-          )}
-          
-          {status === 'error' && (
-            <>
-              <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Error</h2>
-              <p className="text-gray-400">{message}</p>
-            </>
-          )}
-        </div>
+    <div className="relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-3xl blur-xl"></div>
+      <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-12 shadow-2xl text-center">
+        {status === 'loading' && (
+          <>
+            <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Processing</h2>
+            <p className="text-gray-400">{message}</p>
+          </>
+        )}
+        
+        {status === 'success' && (
+          <>
+            <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Success!</h2>
+            <p className="text-gray-400">{message}</p>
+          </>
+        )}
+        
+        {status === 'error' && (
+          <>
+            <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Error</h2>
+            <p className="text-gray-400">{message}</p>
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <Suspense fallback={
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-3xl blur-xl"></div>
+          <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-12 shadow-2xl text-center">
+            <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Loading</h2>
+            <p className="text-gray-400">Please wait...</p>
+          </div>
+        </div>
+      }>
+        <AuthCallbackContent />
+      </Suspense>
     </div>
   )
 }

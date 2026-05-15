@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth'
 import AgentCard from '@/components/AgentCard'
-import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp, Terminal, Activity, FileText } from 'lucide-react'
 
 interface AgentEvent {
   agent_name: string
@@ -24,14 +25,16 @@ interface AgentState {
 
 export default function IncidentPage() {
   const params = useParams()
+  const router = useRouter()
+  const { token, isLoading: authLoading } = useAuth()
   const incidentId = params.id as string
 
   const [agents, setAgents] = useState<Record<string, AgentState>>({
-    triage: { name: 'Triage Agent', status: 'pending', message: 'Waiting to start...' },
-    forensics: { name: 'Forensics Agent', status: 'pending', message: 'Waiting to start...' },
-    bob_analyst: { name: 'Bob Analyst', status: 'pending', message: 'Waiting to start...' },
-    fix: { name: 'Fix Generator', status: 'pending', message: 'Waiting to start...' },
-    postmortem: { name: 'Postmortem Writer', status: 'pending', message: 'Waiting to start...' },
+    triage: { name: 'Triage Agent', status: 'pending', message: 'Waiting in queue...' },
+    forensics: { name: 'Forensics Agent', status: 'pending', message: 'Waiting in queue...' },
+    bob_analyst: { name: 'Bob Analyst', status: 'pending', message: 'Waiting in queue...' },
+    fix: { name: 'Fix Generator', status: 'pending', message: 'Waiting in queue...' },
+    postmortem: { name: 'Postmortem Writer', status: 'pending', message: 'Waiting in queue...' },
   })
 
   const [pipelineStatus, setPipelineStatus] = useState<'connecting' | 'processing' | 'completed' | 'failed'>('connecting')
@@ -43,15 +46,23 @@ export default function IncidentPage() {
   // Timer for elapsed time
   useEffect(() => {
     const interval = setInterval(() => {
-      setElapsedTime(Math.floor((new Date().getTime() - startTime.getTime()) / 1000))
+      if (pipelineStatus === 'connecting' || pipelineStatus === 'processing') {
+        setElapsedTime(Math.floor((new Date().getTime() - startTime.getTime()) / 1000))
+      }
     }, 1000)
     return () => clearInterval(interval)
-  }, [startTime])
+  }, [startTime, pipelineStatus])
 
   useEffect(() => {
-    // Connect to SSE stream (backend reads raw_input & repo_path from DB)
+    if (authLoading) return
+    if (!token) {
+      router.push('/auth/login')
+      return
+    }
+
+    // Connect to SSE stream with token
     const eventSource = new EventSource(
-      `/api/incidents/${incidentId}/stream?raw_input=`
+      `/api/incidents/${incidentId}/stream?token=${encodeURIComponent(token)}`
     )
 
     eventSource.onopen = () => {
@@ -63,7 +74,6 @@ export default function IncidentPage() {
       try {
         const data = JSON.parse(event.data)
         
-        // Check for completion or error
         if (data.type === 'complete') {
           setPipelineStatus('completed')
           eventSource.close()
@@ -77,7 +87,6 @@ export default function IncidentPage() {
           return
         }
 
-        // Handle agent event
         const agentEvent: AgentEvent = data
         
         setAgents((prev) => {
@@ -85,7 +94,6 @@ export default function IncidentPage() {
           const agentKey = agentEvent.agent_name
 
           if (agentKey === 'pipeline') {
-            // Pipeline-level events
             if (agentEvent.status === 'completed') {
               setPipelineStatus('completed')
             } else if (agentEvent.status === 'failed') {
@@ -107,7 +115,7 @@ export default function IncidentPage() {
               updated[agentKey].startTime = new Date()
             }
 
-            if (agentEvent.status === 'completed' || agentEvent.status === 'failed') {
+            if ((agentEvent.status === 'completed' || agentEvent.status === 'failed') && !updated[agentKey].endTime) {
               updated[agentKey].endTime = new Date()
             }
           }
@@ -121,7 +129,7 @@ export default function IncidentPage() {
 
     eventSource.onerror = (err) => {
       console.error('SSE error:', err)
-      setError('Connection to server lost')
+      setError('Connection to analysis server lost')
       setPipelineStatus('failed')
       eventSource.close()
     }
@@ -129,46 +137,7 @@ export default function IncidentPage() {
     return () => {
       eventSource.close()
     }
-  }, [incidentId])
-
-  const getStatusIcon = () => {
-    switch (pipelineStatus) {
-      case 'connecting':
-        return <Clock className="w-6 h-6 text-yellow-400 animate-pulse" />
-      case 'processing':
-        return <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      case 'completed':
-        return <CheckCircle2 className="w-6 h-6 text-green-400" />
-      case 'failed':
-        return <XCircle className="w-6 h-6 text-red-400" />
-    }
-  }
-
-  const getStatusText = () => {
-    switch (pipelineStatus) {
-      case 'connecting':
-        return 'Connecting to analysis pipeline...'
-      case 'processing':
-        return 'AI agents analyzing incident...'
-      case 'completed':
-        return 'Analysis completed successfully!'
-      case 'failed':
-        return 'Analysis failed'
-    }
-  }
-
-  const getStatusColor = () => {
-    switch (pipelineStatus) {
-      case 'connecting':
-        return 'from-yellow-500/20 to-orange-500/20 border-yellow-500/30'
-      case 'processing':
-        return 'from-blue-500/20 to-purple-500/20 border-blue-500/30'
-      case 'completed':
-        return 'from-green-500/20 to-emerald-500/20 border-green-500/30'
-      case 'failed':
-        return 'from-red-500/20 to-pink-500/20 border-red-500/30'
-    }
-  }
+  }, [incidentId, token, authLoading])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -181,40 +150,39 @@ export default function IncidentPage() {
   const progress = (completedAgents / totalAgents) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div className="min-h-screen bg-transparent flex flex-col font-sans">
       {/* Header */}
-      <header className="relative border-b border-white/10 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+      <header className="fixed top-0 w-full z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
+        <div className="container mx-auto px-4 lg:px-8 py-3">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
-                <h1 className="text-xl font-bold text-white">Incident Analysis</h1>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-400">ID: <span className="text-gray-300 font-mono">{incidentId}</span></span>
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-400">Time: <span className="text-gray-300 font-mono">{formatTime(elapsedTime)}</span></span>
+            <div className="flex items-center gap-6">
+              <button onClick={() => router.push('/')} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 transition-colors">
+                <Home className="w-5 h-5 text-slate-400" />
+              </button>
+              <div>
+                <div className="flex items-center gap-3 mb-0.5">
+                  <Activity className="w-4 h-4 text-primary" />
+                  <h1 className="text-base font-bold text-white tracking-tight">Active Investigation</h1>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-slate-500">ID: <span className="text-slate-300 font-mono">{incidentId}</span></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                  <span className="text-slate-500">Time elapsed: <span className="text-primary font-mono font-medium">{formatTime(elapsedTime)}</span></span>
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5 w-full md:w-auto">
               {/* Progress Bar */}
               {pipelineStatus === 'processing' && (
-                <div className="hidden md:block w-48">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-gray-400">Progress</span>
-                    <span className="text-xs text-blue-400 font-semibold">{Math.round(progress)}%</span>
+                <div className="flex-1 md:w-48">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pipeline Progress</span>
+                    <span className="text-[10px] font-bold text-primary">{Math.round(progress)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out"
+                      className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.8)]"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -222,29 +190,35 @@ export default function IncidentPage() {
               )}
 
               {/* Status Badge */}
-              <div className={`flex items-center gap-3 px-4 py-2 bg-gradient-to-r ${getStatusColor()} backdrop-blur-xl rounded-full border`}>
-                {getStatusIcon()}
-                <span className="text-sm font-medium text-white hidden md:block">{getStatusText()}</span>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-bold uppercase tracking-wider ${
+                pipelineStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+                pipelineStatus === 'processing' ? 'bg-primary/10 border-primary/20 text-primary' :
+                pipelineStatus === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                'bg-red-500/10 border-red-500/20 text-red-400'
+              }`}>
+                {pipelineStatus === 'connecting' && <Clock className="w-3.5 h-3.5 animate-pulse" />}
+                {pipelineStatus === 'processing' && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                {pipelineStatus === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                {pipelineStatus === 'failed' && <XCircle className="w-3.5 h-3.5" />}
+                <span className="hidden md:inline">{pipelineStatus}</span>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="relative container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 lg:px-8 py-24 md:py-32">
         {/* Error Display */}
         {error && (
-          <div className="mb-6 animate-shake">
-            <div className="bg-gradient-to-r from-red-900/30 to-pink-900/30 border border-red-500/30 rounded-2xl p-6 backdrop-blur-xl">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
-                    <AlertCircle className="w-5 h-5 text-red-400" />
-                  </div>
+          <div className="mb-8 animate-fade-in-up">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 backdrop-blur-xl">
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-red-400 mb-1">Analysis Error</p>
-                  <p className="text-sm text-gray-300">{error}</p>
+                <div>
+                  <h3 className="text-sm font-bold text-red-400 mb-1">Pipeline Interrupted</h3>
+                  <p className="text-sm text-red-200/80">{error}</p>
                 </div>
               </div>
             </div>
@@ -252,69 +226,70 @@ export default function IncidentPage() {
         )}
 
         {/* Agent Pipeline */}
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-              <TrendingUp className="w-6 h-6 text-blue-400" />
-              AI Agent Pipeline
-            </h2>
-            <div className="text-sm text-gray-400">
-              {completedAgents} of {totalAgents} agents completed
+            <div className="flex items-center gap-3">
+              <Terminal className="w-5 h-5 text-slate-500" />
+              <h2 className="text-lg font-bold text-white">Execution Logs</h2>
+            </div>
+            <div className="text-xs font-medium text-slate-500 bg-slate-900 border border-white/5 px-3 py-1.5 rounded-full">
+              {completedAgents} / {totalAgents} Modules
             </div>
           </div>
 
-          {Object.entries(agents).map(([key, agent], index) => (
-            <AgentCard
-              key={key}
-              name={agent.name}
-              status={agent.status}
-              message={agent.message}
-              data={agent.data}
-              index={index}
-            />
-          ))}
+          <div className="space-y-4">
+            {Object.entries(agents).map(([key, agent], index) => (
+              <AgentCard
+                key={key}
+                name={agent.name}
+                status={agent.status}
+                message={agent.message}
+                data={agent.data}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Completion Section */}
         {pipelineStatus === 'completed' && (
-          <div className="max-w-5xl mx-auto mt-12 space-y-6 animate-fade-in-up">
-            {/* Success Banner */}
-            <div className="relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-3xl blur-xl"></div>
-              <div className="relative bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/30 rounded-3xl p-8 backdrop-blur-xl">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-green-400" />
+          <div className="max-w-4xl mx-auto mt-12 space-y-8 animate-fade-in-up">
+            <div className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.05)]">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500 to-emerald-500/0"></div>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white">Analysis Complete!</h3>
-                    <p className="text-green-400">All agents finished successfully</p>
+                    <h3 className="text-2xl font-bold text-white mb-1">Resolution Ready</h3>
+                    <p className="text-sm text-slate-400">Pull request generated and postmortem finalized.</p>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="bg-slate-900/50 rounded-xl p-4 border border-white/10">
-                    <div className="text-2xl font-bold text-blue-400">{formatTime(elapsedTime)}</div>
-                    <div className="text-sm text-gray-400">Total Time</div>
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-white">{formatTime(elapsedTime)}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-1">Resolution Time</div>
                   </div>
-                  <div className="bg-slate-900/50 rounded-xl p-4 border border-white/10">
-                    <div className="text-2xl font-bold text-purple-400">~4 hours</div>
-                    <div className="text-sm text-gray-400">Time Saved</div>
-                  </div>
-                  <div className="bg-slate-900/50 rounded-xl p-4 border border-white/10">
-                    <div className="text-2xl font-bold text-green-400">{totalAgents}</div>
-                    <div className="text-sm text-gray-400">Agents Used</div>
+                  <div className="w-px h-10 bg-white/10"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-emerald-400">~4h</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-1">Time Saved</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/incidents/${incidentId}/postmortem`)
+                    const res = await fetch(`/api/incidents/${incidentId}/postmortem`, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
                     if (!res.ok) throw new Error('Postmortem not ready yet')
                     const data = await res.json()
                     setPostmortem(data.postmortem)
@@ -322,25 +297,25 @@ export default function IncidentPage() {
                     alert(e.message)
                   }
                 }}
-                className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-2xl hover:shadow-blue-500/50"
+                className="bg-white hover:bg-slate-100 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
               >
-                <Download className="w-5 h-5" />
-                <span>View Postmortem</span>
+                <FileText className="w-5 h-5" />
+                <span>Read Postmortem</span>
               </button>
               
               <button
                 onClick={() => window.location.reload()}
-                className="bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+                className="bg-slate-900 hover:bg-slate-800 border border-white/10 text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
               >
-                <RefreshCw className="w-5 h-5" />
-                <span>Retry Analysis</span>
+                <RefreshCw className="w-5 h-5 text-slate-400" />
+                <span>Rerun Analysis</span>
               </button>
               
               <button
-                onClick={() => window.location.href = '/'}
-                className="bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+                onClick={() => router.push('/')}
+                className="bg-slate-900 hover:bg-slate-800 border border-white/10 text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 sm:col-span-2 lg:col-span-1"
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-5 h-5 text-slate-400" />
                 <span>New Incident</span>
               </button>
             </div>
@@ -349,41 +324,42 @@ export default function IncidentPage() {
 
         {/* Postmortem Display */}
         {postmortem && (
-          <div className="max-w-5xl mx-auto mt-8 animate-fade-in-up">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-xl"></div>
-              <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-8 shadow-2xl">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                      <Download className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white">Postmortem Report</h3>
+          <div className="max-w-4xl mx-auto mt-12 animate-fade-in-up">
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-6 md:p-8 shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center border border-secondary/20">
+                    <Download className="w-6 h-6 text-secondary" />
                   </div>
-                  <button
-                    onClick={() => {
-                      const blob = new Blob([postmortem], { type: 'text/markdown' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = `postmortem-${incidentId}.md`
-                      a.click()
-                    }}
-                    className="text-sm text-blue-400 hover:text-blue-300 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-all border border-blue-500/20"
-                  >
-                    Download MD
-                  </button>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Incident Postmortem</h3>
+                    <p className="text-sm text-slate-400">Generated automatically by Sherlock</p>
+                  </div>
                 </div>
-                <div className="prose prose-invert max-w-none">
-                  <pre className="text-sm text-gray-300 whitespace-pre-wrap bg-slate-900/50 rounded-xl p-6 border border-white/10 overflow-x-auto">
-                    {postmortem}
-                  </pre>
-                </div>
+                <button
+                  onClick={() => {
+                    const blob = new Blob([postmortem], { type: 'text/markdown' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `postmortem-${incidentId}.md`
+                    a.click()
+                  }}
+                  className="shrink-0 flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all border border-white/5"
+                >
+                  <Download className="w-4 h-4" />
+                  Download .MD
+                </button>
+              </div>
+              <div className="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-a:text-primary prose-pre:bg-slate-950 prose-pre:border prose-pre:border-white/5">
+                <pre className="text-sm text-slate-300 whitespace-pre-wrap bg-slate-950 rounded-xl p-6 border border-white/5 overflow-x-auto font-mono leading-relaxed">
+                  {postmortem}
+                </pre>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       <style jsx>{`
         @keyframes fade-in-up {
@@ -396,16 +372,8 @@ export default function IncidentPage() {
             transform: translateY(0);
           }
         }
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
         .animate-fade-in-up {
-          animation: fade-in-up 0.6s ease-out;
-        }
-        .animate-shake {
-          animation: shake 0.5s ease-out;
+          animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
     </div>

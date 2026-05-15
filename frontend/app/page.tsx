@@ -1,36 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Zap, GitBranch, FileText, AlertCircle, Sparkles, ArrowRight, Code2, Brain, Clock, LogOut, User as UserIcon } from 'lucide-react'
+import { useAuth } from '@/lib/auth'
+import { Search, Zap, GitBranch, FileText, AlertCircle, Sparkles, ArrowRight, Code2, Brain, Clock, LogOut, User as UserIcon, Terminal } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
+  const { user, token, logout, isLoading } = useAuth()
   const [rawInput, setRawInput] = useState('')
   const [repoUrl, setRepoUrl] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [showUserMenu, setShowUserMenu] = useState(false)
-
-  useEffect(() => {
-    // Check for authenticated user
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
-    setUser(null)
-    setShowUserMenu(false)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check auth — redirect to login if not authenticated
+    if (!token || !user) {
+      router.push('/auth/login')
+      return
+    }
     
     if (!rawInput.trim()) {
       alert('Please enter an alert or error message')
@@ -44,6 +34,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           raw_input: rawInput,
@@ -52,6 +43,11 @@ export default function Home() {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          logout()
+          router.push('/auth/login')
+          return
+        }
         const err = await response.json()
         throw new Error(err.detail || 'Failed to submit incident')
       }
@@ -80,78 +76,77 @@ Occurrences: 47 times in last hour`)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div className="min-h-screen bg-transparent flex flex-col font-sans">
       {/* Header */}
-      <header className="relative border-b border-white/10 bg-slate-900/50 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-6">
+      <header className="fixed top-0 w-full z-50 border-b border-white/5 bg-slate-950/60 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/40">
+        <div className="container mx-auto px-4 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-8 h-8 text-blue-400" />
-                <Sparkles className="w-4 h-4 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/40 transition-all duration-300">
+                <Terminal className="w-5 h-5 text-primary" />
+                <div className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full animate-ping opacity-75"></div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold tracking-tight text-white group-hover:text-primary transition-colors">
                   Sherlock
                 </h1>
-                <p className="text-sm text-gray-400">AI Incident Response Co-pilot</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Incident Response</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-300">System Online</span>
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
+                <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider">System Online</span>
               </div>
               
               {user ? (
                 <div className="relative">
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 rounded-full transition-all"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-full transition-all"
                   >
                     {user.avatar_url ? (
                       <img src={user.avatar_url} alt={user.full_name || user.email} className="w-6 h-6 rounded-full" />
                     ) : (
-                      <UserIcon className="w-5 h-5 text-gray-400" />
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                        <UserIcon className="w-3 h-3 text-primary" />
+                      </div>
                     )}
-                    <span className="text-sm text-gray-300 hidden sm:inline">{user.full_name || user.email}</span>
+                    <span className="text-sm font-medium text-slate-300 hidden sm:inline">{user.full_name || user.email}</span>
                   </button>
                   
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-                      <div className="p-3 border-b border-white/10">
+                    <div className="absolute right-0 mt-2 w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50">
+                      <div className="p-4 border-b border-white/5 bg-slate-800/30">
                         <p className="text-sm font-medium text-white truncate">{user.email}</p>
-                        {user.full_name && <p className="text-xs text-gray-400 truncate">{user.full_name}</p>}
+                        {user.full_name && <p className="text-xs text-slate-400 truncate mt-1">{user.full_name}</p>}
                       </div>
                       <button
                         onClick={handleLogout}
-                        className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-medium"
                       >
                         <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
+                        <span>Sign out</span>
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <Link href="/docs" className="hidden sm:block text-sm font-medium text-slate-300 hover:text-white transition-colors">
+                    Docs
+                  </Link>
                   <Link
                     href="/auth/login"
-                    className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
                   >
-                    Login
+                    Log in
                   </Link>
                   <Link
                     href="/auth/register"
-                    className="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full transition-all"
+                    className="px-4 py-2 text-sm font-medium bg-white text-slate-950 hover:bg-slate-200 rounded-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                   >
-                    Sign Up
+                    Get Started
                   </Link>
                 </div>
               )}
@@ -160,213 +155,183 @@ Occurrences: 47 times in last hour`)
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="relative container mx-auto px-4 py-16 md:py-24">
-        <div className="max-w-5xl mx-auto">
-          {/* Hero Text */}
-          <div className="text-center mb-16 space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-sm text-blue-300 mb-4 animate-fade-in">
-              <Sparkles className="w-4 h-4" />
-              <span>Powered by IBM Bob AI</span>
-            </div>
+      {/* Main Content */}
+      <main className="flex-1 pt-32 pb-16 flex flex-col justify-center relative">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center max-w-7xl mx-auto">
             
-            <h2 className="text-5xl md:text-7xl font-bold text-white leading-tight animate-fade-in-up">
-              From Alert to Fix PR in{' '}
-              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient">
-                5 Minutes
-              </span>
-            </h2>
-            
-            <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto animate-fade-in-up delay-100">
-              Your AI on-call partner that actually reads the codebase and generates production-ready fixes
-            </p>
+            {/* Left Column: Copy */}
+            <div className="space-y-8 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs font-medium text-primary tracking-wide uppercase">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Powered by IBM Bob AI</span>
+              </div>
+              
+              <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight">
+                Resolve incidents in <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                  minutes, not hours.
+                </span>
+              </h2>
+              
+              <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-xl">
+                Your AI on-call partner that automatically analyzes errors, reads the codebase, and generates production-ready fixes with complete postmortems.
+              </p>
 
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-8 pt-8 animate-fade-in-up delay-200">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-400">5min</div>
-                <div className="text-sm text-gray-500">Avg Analysis Time</div>
+              <div className="flex flex-wrap items-center gap-6 pt-4">
+                <div className="flex flex-col">
+                  <span className="text-3xl font-bold text-white">95%</span>
+                  <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Accuracy Rate</span>
+                </div>
+                <div className="w-px h-12 bg-white/10"></div>
+                <div className="flex flex-col">
+                  <span className="text-3xl font-bold text-white">&lt; 5m</span>
+                  <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Avg Resolution</span>
+                </div>
+                <div className="w-px h-12 bg-white/10"></div>
+                <div className="flex flex-col">
+                  <span className="text-3xl font-bold text-white">24/7</span>
+                  <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">Availability</span>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-purple-400">95%</div>
-                <div className="text-sm text-gray-500">Accuracy Rate</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-pink-400">4hrs</div>
-                <div className="text-sm text-gray-500">Time Saved</div>
+            </div>
+
+            {/* Right Column: Interactive Form */}
+            <div className="relative w-full max-w-lg mx-auto lg:ml-auto lg:mr-0 animate-fade-in-up delay-200">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-3xl blur-2xl opacity-20 animate-pulse"></div>
+              
+              <div className="relative bg-slate-900/60 backdrop-blur-2xl rounded-3xl border border-white/10 p-6 md:p-8 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center border border-white/5">
+                    <Search className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Start Investigation</h3>
+                    <p className="text-sm text-slate-400">Paste your error to begin analysis</p>
+                  </div>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="alert" className="block text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Error Log / Stack Trace
+                    </label>
+                    <div className="relative group">
+                      <textarea
+                        id="alert"
+                        value={rawInput}
+                        onChange={(e) => setRawInput(e.target.value)}
+                        placeholder="Paste the error message here..."
+                        className="w-full h-32 px-4 py-3 bg-slate-950/50 border border-white/10 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 font-mono text-sm transition-all resize-none scrollbar-thin group-hover:border-white/20"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={loadSampleAlert}
+                        className="absolute bottom-3 right-3 text-xs font-medium text-slate-400 hover:text-white px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/80 rounded-lg transition-all border border-white/5 backdrop-blur-sm"
+                      >
+                        Load Example
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="repo" className="block text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                      Repository URL
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <GitBranch className="h-4 w-4 text-slate-500" />
+                      </div>
+                      <input
+                        id="repo"
+                        type="url"
+                        value={repoUrl}
+                        onChange={(e) => setRepoUrl(e.target.value)}
+                        placeholder="https://github.com/user/repo"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-white/10 rounded-xl text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-mono text-sm group-hover:border-white/20"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="relative w-full overflow-hidden bg-white hover:bg-slate-100 text-slate-950 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed font-bold py-3.5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:shadow-none mt-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                        <span>Initializing Agents...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Analyze & Fix Code</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in-up delay-300">
-            <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-white/10 hover:border-yellow-500/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative">
-                <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Zap className="w-6 h-6 text-yellow-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Lightning Fast</h3>
-                <p className="text-sm text-gray-400">
-                  Multi-agent pipeline analyzes incidents in minutes, not hours
-                </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-32 max-w-7xl mx-auto animate-fade-in-up delay-400">
+            <div className="bg-slate-900/40 backdrop-blur-sm border border-white/5 p-8 rounded-3xl hover:bg-slate-900/60 transition-colors">
+              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 border border-primary/20">
+                <Brain className="w-6 h-6 text-primary" />
               </div>
+              <h3 className="text-xl font-bold text-white mb-3">Multi-Agent Pipeline</h3>
+              <p className="text-slate-400 leading-relaxed text-sm">
+                Specialized AI agents for triage, forensics, root cause analysis, and code generation working in parallel.
+              </p>
             </div>
 
-            <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-white/10 hover:border-green-500/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-green-500/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative">
-                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Code2 className="w-6 h-6 text-green-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Code-Level Fixes</h3>
-                <p className="text-sm text-gray-400">
-                  IBM Bob generates patches with full repository context
-                </p>
+            <div className="bg-slate-900/40 backdrop-blur-sm border border-white/5 p-8 rounded-3xl hover:bg-slate-900/60 transition-colors">
+              <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center mb-6 border border-secondary/20">
+                <Code2 className="w-6 h-6 text-secondary" />
               </div>
+              <h3 className="text-xl font-bold text-white mb-3">Context-Aware Fixes</h3>
+              <p className="text-slate-400 leading-relaxed text-sm">
+                Generates pull requests with high confidence by understanding your entire repository structure and dependencies.
+              </p>
             </div>
 
-            <div className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative">
-                <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <FileText className="w-6 h-6 text-purple-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Auto Postmortem</h3>
-                <p className="text-sm text-gray-400">
-                  Comprehensive documentation generated automatically
-                </p>
+            <div className="bg-slate-900/40 backdrop-blur-sm border border-white/5 p-8 rounded-3xl hover:bg-slate-900/60 transition-colors">
+              <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/20">
+                <FileText className="w-6 h-6 text-purple-400" />
               </div>
-            </div>
-          </div>
-
-          {/* Main Form */}
-          <div className="relative animate-fade-in-up delay-400">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl"></div>
-            <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-8 md:p-10 shadow-2xl">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-blue-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">Submit Incident</h3>
-              </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Alert Input */}
-                <div className="space-y-3">
-                  <label htmlFor="alert" className="block text-sm font-medium text-gray-300">
-                    Alert / Error Message
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      id="alert"
-                      value={rawInput}
-                      onChange={(e) => setRawInput(e.target.value)}
-                      placeholder="Paste your error message, stack trace, or alert here..."
-                      className="w-full h-48 px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 font-mono text-sm transition-all resize-none"
-                      required
-                    />
-                    <div className="absolute bottom-3 right-3">
-                      <button
-                        type="button"
-                        onClick={loadSampleAlert}
-                        className="text-xs text-blue-400 hover:text-blue-300 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-all border border-blue-500/20"
-                      >
-                        Load sample
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Repo URL */}
-                <div className="space-y-3">
-                  <label htmlFor="repo" className="block text-sm font-medium text-gray-300">
-                    GitHub Repository URL
-                  </label>
-                  <input
-                    id="repo"
-                    type="url"
-                    value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
-                    placeholder="https://github.com/user/repository"
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 flex items-center gap-2">
-                    <AlertCircle className="w-3 h-3" />
-                    Public GitHub repository URL — Sherlock will clone and analyze it
-                  </p>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="group relative w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-blue-500/50 disabled:shadow-none"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Analyzing Incident...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-5 h-5" />
-                      <span>Start AI Analysis</span>
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Info Box */}
-          <div className="mt-8 relative animate-fade-in-up delay-500">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl"></div>
-            <div className="relative bg-slate-800/50 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-blue-400" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-white mb-2">Powered by IBM Bob</p>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    Sherlock uses IBM Bob for deep code analysis with full repository context.
-                    The multi-agent pipeline will analyze your incident, identify root cause,
-                    generate a fix, and create a comprehensive postmortem—all automatically.
-                  </p>
-                </div>
-              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Auto Postmortems</h3>
+              <p className="text-slate-400 leading-relaxed text-sm">
+                Instantly generates comprehensive markdown documentation summarizing the incident and the applied resolution.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Footer */}
-      <footer className="relative border-t border-white/10 mt-16">
-        <div className="container mx-auto px-4 py-8">
+      <footer className="border-t border-white/5 py-8 mt-auto">
+        <div className="container mx-auto px-4 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
-              Built for IBM Bob Hackathon 2026 • Sherlock v1.0.0
-            </p>
-            <div className="flex items-center gap-6 text-sm text-gray-500">
-              <a href="/docs" className="hover:text-blue-400 transition-colors">Documentation</a>
-              <a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">GitHub</a>
-              <a href="mailto:support@sherlock.ai" className="hover:text-blue-400 transition-colors">Support</a>
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-slate-500" />
+              <p className="text-sm font-medium text-slate-500">
+                Sherlock v1.0.0
+              </p>
+            </div>
+            <div className="flex items-center gap-6 text-sm font-medium text-slate-500">
+              <a href="#" className="hover:text-white transition-colors">IBM Bob Hackathon 2026</a>
+              <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+              <a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
             </div>
           </div>
         </div>
       </footer>
 
       <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
         @keyframes fade-in-up {
           from {
             opacity: 0;
@@ -377,34 +342,24 @@ Occurrences: 47 times in last hour`)
             transform: translateY(0);
           }
         }
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out;
-        }
         .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out;
-        }
-        .delay-100 {
-          animation-delay: 0.1s;
+          animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .delay-200 {
           animation-delay: 0.2s;
         }
-        .delay-300 {
-          animation-delay: 0.3s;
-        }
         .delay-400 {
           animation-delay: 0.4s;
         }
-        .delay-500 {
-          animation-delay: 0.5s;
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
         }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 3s ease infinite;
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
         }
       `}</style>
     </div>
