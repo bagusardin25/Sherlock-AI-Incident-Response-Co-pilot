@@ -15,7 +15,7 @@ It ships in three surfaces:
 - 🌐 **Web UI** (`frontend`) — Next.js dashboard with real-time agent
   visualization.
 - ⚙️ **Backend** (`backend`) — FastAPI orchestrator + multi-agent pipeline
-  + IBM Bob CLI wrapper.
+  + IBM Bob API client.
 
 ---
 
@@ -132,7 +132,7 @@ full-repo reasoning rather than log summarization.
 - Python 3.11+
 - Node.js 18+
 - Git
-- IBM Bob CLI *(optional — mock mode works without it)*
+- IBM Bob API key *(optional — mock mode works without it)*
 
 ### Install
 
@@ -206,7 +206,7 @@ Sherlock/
 │   │   ├── api/              # REST + SSE
 │   │   ├── auth/             # JWT, API keys
 │   │   ├── models/           # Pydantic + SQLAlchemy
-│   │   ├── bob_client.py     # IBM Bob CLI wrapper ⭐
+│   │   ├── bob_client.py     # IBM Bob API client ⭐
 │   │   └── database.py       # PostgreSQL via SQLAlchemy
 │   ├── alembic/              # Schema migrations
 │   └── README.md
@@ -238,8 +238,13 @@ Sherlock/
 ### Backend (`backend/.env`)
 
 ```bash
-SHERLOCK_BOB_MOCK_MODE=true
-SHERLOCK_BOB_CLI_PATH=bob
+# IBM Bob — the core reasoning engine
+SHERLOCK_BOB_API_KEY=your-ibm-bob-api-key
+SHERLOCK_BOB_API_URL=https://api.ibm-bob.ai/v1/chat/completions
+SHERLOCK_BOB_MODEL=bob-v1
+SHERLOCK_BOB_MOCK_MODE=true          # set false when you have a real key
+SHERLOCK_BOB_TIMEOUT=120
+
 SHERLOCK_DATABASE_URL=postgresql://user:pass@localhost/sherlock
 SHERLOCK_CORS_ORIGINS=["http://localhost:3000"]
 ```

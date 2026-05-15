@@ -1,13 +1,13 @@
 """
-Bob CLI Wrapper - Interface untuk memanggil IBM Bob CLI
+IBM Bob API Client - Interface untuk memanggil IBM Bob via HTTP API
 """
-import asyncio
 import json
 import logging
-import os
 from pathlib import Path
-from typing import TypeVar, Type, Optional, Dict, Any
-from pydantic import BaseModel, ValidationError
+from typing import TypeVar, Type, Optional
+
+import httpx
+from pydantic import BaseModel
 
 from app.config import settings
 
@@ -22,7 +22,7 @@ class BobError(Exception):
 
 
 class BobTimeoutError(BobError):
-    """Raised ketika Bob CLI timeout"""
+    """Raised ketika Bob API timeout"""
     pass
 
 
@@ -32,230 +32,114 @@ class BobParseError(BobError):
 
 
 class BobClient:
-    """Client untuk berinteraksi dengan Bob CLI"""
-    
-    def __init__(
-        self,
-        cli_path: str = None,
-        timeout: int = None,
-        mock_mode: bool = None
-    ):
-        self.cli_path = cli_path or settings.bob_cli_path
-        self.timeout = timeout or settings.bob_timeout
-        self.mock_mode = mock_mode if mock_mode is not None else settings.bob_mock_mode
+    """Client untuk berinteraksi dengan IBM Bob API"""
+
+    def __init__(self):
+        self.api_url = settings.bob_api_url
+        self.api_key = settings.bob_api_key
+        self.model = settings.bob_model
+        self.timeout = settings.bob_timeout
+        self.mock_mode = settings.bob_mock_mode
         self.fixtures_path = Path(settings.fixtures_path) / "bob_responses"
-        
+
     async def ask_bob(
         self,
         prompt: str,
         repo_path: str,
         output_schema: Type[T],
+        system_prompt: str = "You are IBM Bob, an AI assistant with deep repository understanding.",
         correlation_id: Optional[str] = None
     ) -> T:
         """
-        Memanggil Bob CLI dengan prompt dan mengharapkan output sesuai schema.
-        
-        Args:
-            prompt: Prompt untuk Bob
-            repo_path: Path ke repository yang akan dianalisis
-            output_schema: Pydantic model untuk validasi output
-            correlation_id: ID untuk tracking/logging
-            
-        Returns:
-            Instance dari output_schema dengan data dari Bob
-            
-        Raises:
-            BobTimeoutError: Jika Bob timeout
-            BobParseError: Jika output tidak valid
-            BobError: Error lainnya
+        Call IBM Bob API with prompt and parse response into schema.
+
+        In mock mode, returns canned fixture responses.
         """
         log_prefix = f"[{correlation_id}]" if correlation_id else ""
-        logger.info(f"{log_prefix} Calling Bob with schema: {output_schema.__name__}")
-        
+        logger.info(f"{log_prefix} Calling IBM Bob (model={self.model}, schema={output_schema.__name__})")
+
         if self.mock_mode:
-            logger.info(f"{log_prefix} Mock mode enabled, returning canned response")
+            logger.info(f"{log_prefix} Mock mode — returning canned response")
             return await self._get_mock_response(output_schema, correlation_id)
-        
-        try:
-            # Construct structured prompt dengan schema hint
-            structured_prompt = self._construct_prompt(prompt, output_schema)
-            
-            # Execute Bob CLI
-            result = await self._execute_bob_cli(
-                structured_prompt,
-                repo_path,
-                correlation_id
-            )
-            
-            # Parse and validate output
-            return await self._parse_output(result, output_schema, correlation_id)
-            
-        except asyncio.TimeoutError:
-            logger.error(f"{log_prefix} Bob CLI timeout after {self.timeout}s")
-            raise BobTimeoutError(f"Bob CLI timeout after {self.timeout}s")
-        except ValidationError as e:
-            logger.error(f"{log_prefix} Bob output validation failed: {e}")
-            raise BobParseError(f"Failed to parse Bob output: {e}")
-        except Exception as e:
-            logger.error(f"{log_prefix} Unexpected error calling Bob: {e}")
-            raise BobError(f"Error calling Bob: {e}")
-    
-    def _construct_prompt(self, prompt: str, schema: Type[BaseModel]) -> str:
-        """Construct prompt dengan schema hint untuk structured output"""
-        schema_json = schema.model_json_schema()
-        
-        structured_prompt = f"""
-{prompt}
 
-IMPORTANT: Please respond with a valid JSON object that matches this schema:
+        if not self.api_key:
+            raise BobError("SHERLOCK_BOB_API_KEY not configured")
 
-{json.dumps(schema_json, indent=2)}
-
-Your response should be ONLY the JSON object, no additional text or explanation.
-"""
-        return structured_prompt
-    
-    async def _execute_bob_cli(
-        self,
-        prompt: str,
-        repo_path: str,
-        correlation_id: Optional[str] = None
-    ) -> str:
-        """Execute Bob CLI sebagai subprocess"""
-        log_prefix = f"[{correlation_id}]" if correlation_id else ""
-        
-        # Construct command
-        # Asumsi: bob CLI menerima prompt via stdin atau --prompt flag
-        # Adjust sesuai actual Bob CLI interface
-        cmd = [
-            self.cli_path,
-            "ask",
-            "--repo", repo_path,
-            "--format", "json"
+        # Build messages with schema instruction
+        schema_json = json.dumps(output_schema.model_json_schema(), indent=2)
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"{system_prompt}\n\n"
+                    f"Respond ONLY with a valid JSON object matching this schema:\n{schema_json}"
+                ),
+            },
+            {"role": "user", "content": prompt},
         ]
-        
-        logger.debug(f"{log_prefix} Executing: {' '.join(cmd)}")
-        
-        # Create subprocess
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=repo_path
-        )
-        
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
         try:
-            # Send prompt and wait for response
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(prompt.encode('utf-8')),
-                timeout=self.timeout
-            )
-            
-            if process.returncode != 0:
-                error_msg = stderr.decode('utf-8')
-                logger.error(f"{log_prefix} Bob CLI failed: {error_msg}")
-                raise BobError(f"Bob CLI failed with code {process.returncode}: {error_msg}")
-            
-            output = stdout.decode('utf-8')
-            logger.debug(f"{log_prefix} Bob output length: {len(output)} chars")
-            
-            return output
-            
-        except asyncio.TimeoutError:
-            # Kill process on timeout
-            try:
-                process.kill()
-                await process.wait()
-            except:
-                pass
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.post(self.api_url, json=payload, headers=headers)
+
+            if resp.status_code != 200:
+                raise BobError(f"IBM Bob API error {resp.status_code}: {resp.text}")
+
+            content = resp.json()["choices"][0]["message"]["content"]
+            return self._parse_response(content, output_schema, correlation_id)
+
+        except httpx.TimeoutException:
+            logger.error(f"{log_prefix} IBM Bob API timeout after {self.timeout}s")
+            raise BobTimeoutError(f"IBM Bob API timeout after {self.timeout}s")
+        except BobError:
             raise
-    
-    async def _parse_output(
-        self,
-        output: str,
-        schema: Type[T],
-        correlation_id: Optional[str] = None,
-        retry: bool = True
-    ) -> T:
-        """Parse dan validate Bob output"""
+        except Exception as e:
+            logger.error(f"{log_prefix} Unexpected error calling IBM Bob: {e}")
+            raise BobError(f"Error calling IBM Bob: {e}")
+
+    def _parse_response(self, content: str, schema: Type[T], correlation_id: Optional[str] = None) -> T:
+        """Parse JSON response from Bob into the target schema."""
         log_prefix = f"[{correlation_id}]" if correlation_id else ""
-        
+        text = content.strip()
+        # Strip markdown fences if present
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
         try:
-            # Try to extract JSON from output (Bob might include extra text)
-            json_str = self._extract_json(output)
-            data = json.loads(json_str)
-            
-            # Validate with Pydantic
-            result = schema.model_validate(data)
-            logger.info(f"{log_prefix} Successfully parsed Bob output")
+            parsed = json.loads(text)
+            result = schema.model_validate(parsed)
+            logger.info(f"{log_prefix} Successfully parsed IBM Bob response")
             return result
-            
-        except (json.JSONDecodeError, ValidationError) as e:
-            if retry:
-                logger.warning(f"{log_prefix} Parse failed, attempting retry with cleaned output")
-                # Try to clean and retry once
-                cleaned = self._clean_output(output)
-                return await self._parse_output(cleaned, schema, correlation_id, retry=False)
-            else:
-                logger.error(f"{log_prefix} Failed to parse Bob output after retry")
-                raise BobParseError(f"Could not parse Bob output: {e}")
-    
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON object from text yang mungkin ada extra content"""
-        # Find first { and last }
-        start = text.find('{')
-        end = text.rfind('}')
-        
-        if start == -1 or end == -1:
-            raise ValueError("No JSON object found in output")
-        
-        return text[start:end+1]
-    
-    def _clean_output(self, text: str) -> str:
-        """Clean output untuk retry parsing"""
-        # Remove markdown code blocks
-        text = text.replace('```json', '').replace('```', '')
-        # Remove extra whitespace
-        text = text.strip()
-        return text
-    
-    async def _get_mock_response(
-        self,
-        schema: Type[T],
-        correlation_id: Optional[str] = None
-    ) -> T:
-        """Get canned response dari fixtures untuk testing"""
-        log_prefix = f"[{correlation_id}]" if correlation_id else ""
-        
-        # Map schema to fixture file
+        except Exception as e:
+            logger.error(f"{log_prefix} Failed to parse IBM Bob response: {e}")
+            raise BobParseError(f"Failed to parse IBM Bob response: {e}")
+
+    async def _get_mock_response(self, schema: Type[T], correlation_id: Optional[str] = None) -> T:
+        """Return canned fixture response for mock/demo mode."""
         fixture_map = {
             "RootCauseAnalysis": "root_cause_analysis.json",
             "FixProposal": "fix_proposal.json",
         }
-        
         fixture_file = fixture_map.get(schema.__name__)
         if not fixture_file:
-            logger.warning(f"{log_prefix} No mock fixture for {schema.__name__}, using default")
-            # Return minimal valid instance
             return schema.model_validate({})
-        
+
         fixture_path = self.fixtures_path / fixture_file
-        
         if not fixture_path.exists():
-            logger.warning(f"{log_prefix} Mock fixture not found: {fixture_path}")
             return schema.model_validate({})
-        
-        try:
-            with open(fixture_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            logger.info(f"{log_prefix} Loaded mock response from {fixture_file}")
-            return schema.model_validate(data)
-            
-        except Exception as e:
-            logger.error(f"{log_prefix} Error loading mock fixture: {e}")
-            return schema.model_validate({})
+
+        with open(fixture_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return schema.model_validate(data)
 
 
 # Global client instance
@@ -266,17 +150,8 @@ async def ask_bob(
     prompt: str,
     repo_path: str,
     output_schema: Type[T],
+    system_prompt: str = "You are IBM Bob, an AI assistant with deep repository understanding.",
     correlation_id: Optional[str] = None
 ) -> T:
-    """
-    Convenience function untuk memanggil Bob.
-    
-    Usage:
-        result = await ask_bob(
-            "Analyze this bug...",
-            "/path/to/repo",
-            RootCauseAnalysis,
-            correlation_id="inc-123"
-        )
-    """
-    return await bob_client.ask_bob(prompt, repo_path, output_schema, correlation_id)
+    """Convenience function to call IBM Bob."""
+    return await bob_client.ask_bob(prompt, repo_path, output_schema, system_prompt, correlation_id)

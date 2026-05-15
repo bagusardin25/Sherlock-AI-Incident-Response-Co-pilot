@@ -17,12 +17,15 @@ class Settings(BaseSettings):
     # CORS Settings
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
-    # Bob CLI Settings
+    # IBM Bob API Settings (Analyst + Fix agents)
     bob_mock_mode: bool = False
+    bob_api_key: str = ""
+    bob_api_url: str = "https://api.ibm-bob.ai/v1/chat/completions"
+    bob_model: str = "bob-v1"
+    bob_timeout: float = 120.0
     bob_cli_path: str = "bob"
-    bob_timeout: int = 60
-    
-    # OpenRouter Settings
+
+    # OpenRouter Settings (supporting agents: triage, forensics, postmortem)
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-4o-mini"
     openrouter_timeout: float = 60.0

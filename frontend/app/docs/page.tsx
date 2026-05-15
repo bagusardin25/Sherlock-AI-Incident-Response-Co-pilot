@@ -4,120 +4,296 @@ export default function DocsPage() {
       <section id="introduction" className="scroll-mt-32">
         <h1 className="text-4xl lg:text-5xl tracking-tight !mb-6">Sherlock Documentation</h1>
         <p className="text-lg text-slate-300 leading-relaxed mb-6">
-          Welcome to the official documentation for <strong>Sherlock</strong>. Sherlock is an AI Incident Response Co-pilot designed to resolve production incidents from alert to pull request in minutes.
+          <strong>Sherlock</strong> is an AI-powered incident response co-pilot that resolves production incidents from alert to pull request in under 3 minutes. Powered by IBM Bob for deep codebase reasoning.
         </p>
+        <div className="grid sm:grid-cols-3 gap-4 mt-8">
+          <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-center">
+            <p className="text-2xl font-bold text-primary">~25s</p>
+            <p className="text-xs text-slate-400 mt-1">Average resolution time</p>
+          </div>
+          <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-center">
+            <p className="text-2xl font-bold text-primary">5</p>
+            <p className="text-xs text-slate-400 mt-1">Specialized AI agents</p>
+          </div>
+          <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-center">
+            <p className="text-2xl font-bold text-primary">3</p>
+            <p className="text-xs text-slate-400 mt-1">Surfaces: CLI, Web, CI/CD</p>
+          </div>
+        </div>
+      </section>
+
+      <hr className="my-12 border-slate-800" />
+
+      <section id="installation" className="scroll-mt-32">
+        <h2 className="text-3xl tracking-tight !mb-8">Getting Started</h2>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">1</span>
+          Create your account
+        </h3>
         <p className="text-slate-300">
-          By leveraging specialized AI agents and deep codebase context, Sherlock minimizes downtime, automatically diagnoses root causes, and generates postmortems for your team, allowing your engineers to focus on building features rather than putting out fires.
+          Sign up at the Sherlock dashboard. After registration, you&apos;ll have access to the web interface and can generate API keys for the CLI.
         </p>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">2</span>
+          Generate an API key
+        </h3>
+        <p className="text-slate-300">
+          Navigate to <strong>Settings → API Keys</strong> in the dashboard and create a new key. You&apos;ll need this to authenticate the CLI and any CI/CD integrations.
+        </p>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">3</span>
+          Install the CLI <span className="text-sm font-normal text-slate-500">(optional)</span>
+        </h3>
+        <p className="text-slate-300 mb-4">
+          For terminal-based workflows, install the Sherlock CLI globally:
+        </p>
+        <pre className="!bg-slate-950 !border-slate-800 shadow-xl"><code className="!text-slate-300">{`npm install -g sherlock-cli`}</code></pre>
+        <p className="text-slate-400 text-sm mt-3">Requires Node.js 18 or higher.</p>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">4</span>
+          Authenticate the CLI
+        </h3>
+        <pre className="!bg-slate-950 !border-slate-800 shadow-xl"><code className="!text-slate-300">{`sherlock
+sherlock ›  /auth login
+Enter API key: sk_sherlock_••••••••
+
+✓ Authenticated`}</code></pre>
       </section>
 
       <hr className="my-12 border-slate-800" />
 
       <section id="quickstart" className="scroll-mt-32">
-        <h2 className="text-3xl tracking-tight !mb-8">Quickstart</h2>
-        
+        <h2 className="text-3xl tracking-tight !mb-8">Using the Web Dashboard</h2>
+
         <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
-          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">1</span> 
-          Submit an Alert
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">1</span>
+          Submit an incident
         </h3>
         <p className="text-slate-300">
-          Go to the main dashboard and paste your stack trace, error log, or system alert directly into the investigation input field. The more context you provide in the error log, the better Sherlock can analyze the issue.
+          From the main dashboard, paste your stack trace, error log, or alert payload into the investigation input. The more context you provide, the more accurate the diagnosis.
         </p>
-        
+
         <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
-          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">2</span> 
-          Provide Repository Context
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">2</span>
+          Connect your repository
         </h3>
         <p className="text-slate-300">
-          Provide the URL to your code repository (e.g., GitHub link). Sherlock needs this to deeply understand the architecture of your application and pinpoint the exact file causing the issue.
+          Provide your repository URL (e.g., GitHub). Sherlock uses this to understand your codebase architecture, analyze git history, and generate accurate fixes.
         </p>
-        
+
         <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
-          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">3</span> 
-          Let the Agents Work
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">3</span>
+          Watch the agents work
         </h3>
         <p className="text-slate-300 mb-4">
-          Once submitted, Sherlock kicks off a multi-agent pipeline working in parallel and sequentially where necessary:
+          Sherlock runs a 5-agent pipeline in real-time. You can watch each agent&apos;s progress live on the dashboard:
         </p>
         <ul className="space-y-2 text-slate-300 ml-4">
-          <li><strong className="text-foreground">Triage Agent:</strong> Assesses severity and routes the incident.</li>
-          <li><strong className="text-foreground">Forensics Agent:</strong> Searches codebases and recent commits for suspects.</li>
-          <li><strong className="text-foreground">Analyst Agent:</strong> Determines the root cause.</li>
-          <li><strong className="text-foreground">Fix Agent:</strong> Writes the actual code fix and creates a PR.</li>
-          <li><strong className="text-foreground">Postmortem Agent:</strong> Summarizes the incident for your records.</li>
+          <li><strong className="text-foreground">Triage</strong> — classifies severity and affected service</li>
+          <li><strong className="text-foreground">Forensics</strong> — identifies suspect commits and files</li>
+          <li><strong className="text-foreground">Analyst</strong> — determines root cause with evidence</li>
+          <li><strong className="text-foreground">Fix</strong> — generates a code patch and regression test</li>
+          <li><strong className="text-foreground">Postmortem</strong> — writes the incident report</li>
         </ul>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">4</span>
+          Review results
+        </h3>
+        <p className="text-slate-300">
+          Once complete, review the root cause analysis, apply the suggested fix, and share the auto-generated postmortem with your team.
+        </p>
+      </section>
+
+      <hr className="my-12 border-slate-800" />
+
+      <section id="cli-commands" className="scroll-mt-32">
+        <h2 className="text-3xl tracking-tight !mb-8">CLI Reference</h2>
+        <p className="text-slate-300 mb-6">
+          The Sherlock CLI provides an interactive shell for terminal-based incident response. Launch it by running <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock</code>.
+        </p>
+
+        <pre className="!bg-slate-950 !border-slate-800 shadow-xl mb-8"><code className="!text-slate-300">{`$ sherlock
+
+╔════════════════════════════════════════════════════════╗
+║ Sherlock Incident Response Shell                       ║
+║ Powered by IBM Bob repository intelligence             ║
+╚════════════════════════════════════════════════════════╝
+
+sherlock ›`}</code></pre>
+
+        <h3 className="text-xl font-semibold !mt-8 !mb-4">Slash commands</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-slate-800">
+                <th className="py-3 pr-4 text-slate-400 font-medium">Command</th>
+                <th className="py-3 text-slate-400 font-medium">Description</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/resolve &lt;file&gt;</code></td>
+                <td className="py-3">Run the full 5-agent pipeline on an alert file</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/status [id]</code></td>
+                <td className="py-3">List incidents or show detail for one</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/fix [id]</code></td>
+                <td className="py-3">View the generated patch and regression test</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/postmortem [id]</code></td>
+                <td className="py-3">View the incident report</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/open [id]</code></td>
+                <td className="py-3">Open incident in the web dashboard</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/history</code></td>
+                <td className="py-3">Show recent incidents from this session</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/auth login</code></td>
+                <td className="py-3">Authenticate with your API key</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-primary">/help</code></td>
+                <td className="py-3">Show all available commands</td>
+              </tr>
+              <tr>
+                <td className="py-3 pr-4"><code className="text-primary">/exit</code></td>
+                <td className="py-3">Leave the shell</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+          <p className="text-sm text-slate-300">
+            <strong className="text-primary">💡 Tip:</strong> After resolving an incident, the prompt becomes <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock(inc-xxxxx) ›</code> — all follow-up commands automatically use that incident ID.
+          </p>
+        </div>
+
+        <h3 className="text-xl font-semibold !mt-10 !mb-4">CI/CD integration</h3>
+        <p className="text-slate-300 mb-4">
+          Use one-shot commands directly in your pipelines:
+        </p>
+        <pre className="!bg-slate-950 !border-slate-800 shadow-xl"><code className="!text-slate-300">{`sherlock resolve crash.log --repo https://github.com/org/service
+sherlock fix inc-a1b2c3d4 --output fix.patch
+sherlock postmortem inc-a1b2c3d4 --output incident.md`}</code></pre>
+      </section>
+
+      <hr className="my-12 border-slate-800" />
+
+      <section id="configuration" className="scroll-mt-32">
+        <h2 className="text-3xl tracking-tight !mb-8">Configuration</h2>
+        <p className="text-slate-300 mb-6">
+          The CLI stores configuration in <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">~/.sherlock/config.json</code>. You can also use environment variables:
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-slate-800">
+                <th className="py-3 pr-4 text-slate-400 font-medium">Variable</th>
+                <th className="py-3 text-slate-400 font-medium">Purpose</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_API_KEY</code></td>
+                <td className="py-3">Your API key (from Settings → API Keys)</td>
+              </tr>
+              <tr className="border-b border-slate-800/50">
+                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_API_URL</code></td>
+                <td className="py-3">API endpoint (defaults to Sherlock cloud)</td>
+              </tr>
+              <tr>
+                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_WORKSPACE</code></td>
+                <td className="py-3">Workspace name shown in the shell header</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <hr className="my-12 border-slate-800" />
 
       <section id="how-it-works" className="scroll-mt-32">
         <h2 className="text-3xl tracking-tight !mb-6">How It Works</h2>
-        <p className="text-slate-300">
-          Sherlock operates on a micro-agent architecture orchestrated by a central pipeline. Instead of relying on a single massive prompt, we distribute the workload across specialized, single-purpose AI models to ensure high accuracy and low latency.
+        <p className="text-slate-300 mb-6">
+          When you submit an incident, Sherlock orchestrates a multi-agent pipeline. Each agent is specialized for a single task — no single massive prompt, just focused, high-accuracy steps.
         </p>
         <div className="my-8">
           <pre className="!bg-slate-950 !border-slate-800 shadow-xl"><code className="!text-slate-300">
-{`Alert Received 
+{`Alert Submitted
    │
-   ├─► [Triage] 
-   │      │
-   │      ├─► Severity: High
-   │      └─► Service: Checkout
+   ├─► [Triage]        Classify severity & route
    │
-   ├─► [Forensics] ◄── Repository Context
-   │      │
-   │      └─► Suspect Files Identified
+   ├─► [Forensics]     Analyze git history & suspect commits
    │
-   ├─► [Analyst]
-   │      │
-   │      └─► Root Cause Found (Null Pointer)
+   ├─► [Analyst] ⭐    IBM Bob deep code reasoning
    │
-   ├─► [Fix Generator]
-   │      │
-   │      └─► Pull Request Created
+   ├─► [Fix] ⭐        Generate patch + regression test
    │
-   └─► [Postmortem]
-          │
-          └─► Markdown Report Generated`}
+   └─► [Postmortem]    Write incident report`}
           </code></pre>
         </div>
+        <p className="text-slate-300">
+          The <strong>Analyst</strong> and <strong>Fix</strong> agents use IBM Bob for full-repository reasoning — understanding your architecture, dependency graph, and code patterns to produce accurate root cause analysis and working fixes.
+        </p>
       </section>
 
       <hr className="my-12 border-slate-800" />
 
       <section id="agents" className="scroll-mt-32">
-        <h2 className="text-3xl tracking-tight !mb-8">AI Agents Overview</h2>
+        <h2 className="text-3xl tracking-tight !mb-8">AI Agents</h2>
         <div className="grid md:grid-cols-2 gap-6 mt-6">
           <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-lg hover:border-primary/30 transition-colors">
             <h4 className="font-bold text-foreground mb-3 text-lg flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                Triage Agent
             </h4>
-            <p className="text-sm text-slate-400 leading-relaxed">Classifies incoming alerts based on severity, affected service, and urgency. Filters out noise from critical P0/P1 incidents, ensuring your team only gets paged when it matters.</p>
+            <p className="text-sm text-slate-400 leading-relaxed">Classifies severity, error type, and affected service. Filters noise from critical P0/P1 incidents so your team only gets paged when it matters.</p>
           </div>
-          
+
           <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-lg hover:border-primary/30 transition-colors">
             <h4 className="font-bold text-foreground mb-3 text-lg flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
                Forensics Agent
             </h4>
-            <p className="text-sm text-slate-400 leading-relaxed">Acts like a detective. It cross-references the stack trace with recent git commits, PRs, and file histories to find the &quot;smoking gun&quot; that caused the incident.</p>
+            <p className="text-sm text-slate-400 leading-relaxed">Cross-references stack traces with git history, recent commits, and file changes to identify the exact commit that introduced the bug.</p>
           </div>
-          
+
           <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-lg hover:border-primary/30 transition-colors">
             <h4 className="font-bold text-foreground mb-3 text-lg flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-               Analyst Agent
+               Analyst Agent ⭐
             </h4>
-            <p className="text-sm text-slate-400 leading-relaxed">Reads the forensic data and formulates a hypothesis for the root cause. Explains exactly <em>why</em> the bug occurred in plain English for the engineering team.</p>
+            <p className="text-sm text-slate-400 leading-relaxed">Uses IBM Bob to reason over your full repository. Produces a root cause hypothesis with supporting evidence and confidence score.</p>
           </div>
-          
+
           <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-lg hover:border-primary/30 transition-colors">
             <h4 className="font-bold text-foreground mb-3 text-lg flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-               Fix & Postmortem
+               Fix Agent ⭐
             </h4>
-            <p className="text-sm text-slate-400 leading-relaxed">Generates code patches, includes missing unit tests, and writes standard markdown postmortem reports for compliance and future reference.</p>
+            <p className="text-sm text-slate-400 leading-relaxed">Generates unified-diff patches and regression tests. Creates PR-ready code fixes that you can review and merge immediately.</p>
+          </div>
+
+          <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-lg hover:border-primary/30 transition-colors md:col-span-2">
+            <h4 className="font-bold text-foreground mb-3 text-lg flex items-center gap-2">
+               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+               Postmortem Agent
+            </h4>
+            <p className="text-sm text-slate-400 leading-relaxed">Aggregates all findings into a publishable incident report with timeline, root cause, fix summary, and prevention recommendations — ready to share with stakeholders.</p>
           </div>
         </div>
       </section>
@@ -125,19 +301,27 @@ export default function DocsPage() {
       <hr className="my-12 border-slate-800" />
 
       <section id="faq" className="scroll-mt-32">
-        <h2 className="text-3xl tracking-tight !mb-8">Frequently Asked Questions</h2>
-        <div className="space-y-8">
+        <h2 className="text-3xl tracking-tight !mb-8">FAQ</h2>
+        <div className="space-y-6">
           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
             <h4 className="text-lg font-bold text-foreground">Do I need to install anything in my repository?</h4>
-            <p className="mt-3 text-slate-300 leading-relaxed">No, Sherlock works via API access to your repository (e.g., using GitHub Personal Access Tokens if private) and dynamically reads your code without needing an agent installed on your servers.</p>
+            <p className="mt-3 text-slate-300 leading-relaxed">No. Sherlock accesses your repository via URL and reads code dynamically. No agents, webhooks, or plugins need to be installed on your servers.</p>
           </div>
           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
-            <h4 className="text-lg font-bold text-foreground">What programming languages are supported?</h4>
-            <p className="mt-3 text-slate-300 leading-relaxed">Sherlock currently supports TypeScript, JavaScript, Python, Go, and Java for deep code analysis and automated fix generation. More languages are continually being added.</p>
+            <h4 className="text-lg font-bold text-foreground">What languages are supported?</h4>
+            <p className="mt-3 text-slate-300 leading-relaxed">TypeScript, JavaScript, Python, Go, and Java for deep code analysis and automated fix generation. The forensics agent works with any git repository regardless of language.</p>
           </div>
-           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
-            <h4 className="text-lg font-bold text-foreground">Is my codebase secure?</h4>
-            <p className="mt-3 text-slate-300 leading-relaxed">Yes. We do not store your proprietary code. Source files are fetched ephemerally into memory during the incident analysis phase and discarded once the postmortem is generated.</p>
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <h4 className="text-lg font-bold text-foreground">Is my code secure?</h4>
+            <p className="mt-3 text-slate-300 leading-relaxed">Yes. Source files are fetched ephemerally into memory during analysis and discarded immediately after. We do not store your proprietary code.</p>
+          </div>
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <h4 className="text-lg font-bold text-foreground">Can I use Sherlock in CI/CD pipelines?</h4>
+            <p className="mt-3 text-slate-300 leading-relaxed">Yes. The CLI supports one-shot commands (<code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock resolve</code>, <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock fix --output</code>) designed for automation. Set <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">SHERLOCK_API_KEY</code> as an environment variable in your pipeline.</p>
+          </div>
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <h4 className="text-lg font-bold text-foreground">Do I need the CLI to use Sherlock?</h4>
+            <p className="mt-3 text-slate-300 leading-relaxed">No. The web dashboard provides the full experience — submit alerts, watch agents work in real-time, review fixes, and download postmortems. The CLI is an optional power-user tool for terminal workflows.</p>
           </div>
         </div>
       </section>
