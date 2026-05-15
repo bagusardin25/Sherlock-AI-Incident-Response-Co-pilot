@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Fira_Code, Fira_Sans } from 'next/font/google'
+import { Fira_Code, Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 
@@ -9,10 +9,10 @@ const firaCode = Fira_Code({
   display: 'swap',
 })
 
-const firaSans = Fira_Sans({
+const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-fira-sans',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-poppins',
   display: 'swap',
 })
 
@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${firaSans.variable} ${firaCode.variable}`}>
+    <html lang="en" className={`${poppins.variable} ${firaCode.variable}`}>
       <body className="font-sans min-h-screen bg-background text-foreground selection:bg-primary/30 antialiased transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>

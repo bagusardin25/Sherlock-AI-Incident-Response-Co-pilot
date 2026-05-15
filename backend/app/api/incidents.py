@@ -14,7 +14,7 @@ from app.services.incident_service import IncidentService
 from app.services.repo_manager import repo_manager, RepoManagerError
 from app.orchestrator.pipeline import orchestrator, run_incident_analysis
 from app.models.state import IncidentState
-from app.auth.dependencies import get_current_active_user
+from app.auth.dependencies import get_current_active_user, get_user_from_access_token_or_api_key
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -75,13 +75,12 @@ async def stream_incident_analysis(
     token: str = Query("", description="Auth token for SSE"),
     db: AsyncSession = Depends(get_db)
 ):
-    # Verify token manually for SSE (EventSource doesn't support headers)
-    from app.auth.security import verify_token as verify_jwt
-    from app.services.user_service import UserService
+    # Verify token manually for SSE (EventSource doesn't support headers).
+    # Browser clients pass a JWT; CLI clients pass an API key.
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
-    user_id = verify_jwt(token, token_type="access")
-    if not user_id:
+    current_user = await get_user_from_access_token_or_api_key(db, token)
+    if not current_user:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     incident = await IncidentService.get_incident(db, incident_id, load_relations=False)

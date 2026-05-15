@@ -1,59 +1,97 @@
 """
 Authentication dependencies for FastAPI
 """
+import hashlib
+from datetime import datetime
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.auth.security import verify_token
 from app.services.user_service import UserService
 from app.models.user import User
+from app.models.api_key import APIKey
 
 # HTTP Bearer token scheme
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+async def get_user_from_api_key(db: AsyncSession, api_key: str) -> Optional[User]:
+    """
+    Resolve a CLI/API key to an active user.
+    """
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    result = await db.execute(
+        select(APIKey).where(APIKey.key_hash == key_hash, APIKey.is_active == True)  # noqa: E712
+    )
+    stored_key = result.scalar_one_or_none()
+    if not stored_key:
+        return None
+
+    user = await UserService.get_user_by_id(db, stored_key.user_id)
+    if not user or not user.is_active:
+        return None
+
+    stored_key.last_used_at = datetime.utcnow()
+    await db.flush()
+    return user
+
+
+async def get_user_from_access_token_or_api_key(db: AsyncSession, token: str) -> Optional[User]:
+    """
+    Resolve either a browser JWT access token or a CLI API key.
+    """
+    user_id = verify_token(token, token_type="access")
+    if user_id:
+        user = await UserService.get_user_by_id(db, user_id)
+        if user and user.is_active:
+            return user
+
+    return await get_user_from_api_key(db, token)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Get current authenticated user from JWT token
+    Get current authenticated user from a browser JWT or CLI API key.
     
     Raises:
-        HTTPException: If token is invalid or user not found
+        HTTPException: If credentials are invalid or user not found
     """
-    token = credentials.credentials
-    
-    # Verify token and extract user ID
-    user_id = verify_token(token, token_type="access")
-    
-    if not user_id:
+    if credentials:
+        user = await get_user_from_access_token_or_api_key(db, credentials.credentials)
+        if user:
+            return user
+
+    if x_api_key:
+        user = await get_user_from_api_key(db, x_api_key)
+        if user:
+            return user
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Get user from database
-    user = await UserService.get_user_by_id(db, user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
-    
-    return user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_active_user(

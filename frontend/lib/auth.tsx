@@ -18,6 +18,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function clearStoredAuth() {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('user')
+}
+
+function parseStoredUser(savedUser: string | null): User | null {
+  if (!savedUser) return null
+
+  try {
+    const parsed = JSON.parse(savedUser)
+    if (parsed && typeof parsed.id === 'string' && typeof parsed.email === 'string') {
+      return parsed
+    }
+  } catch (error) {
+    console.warn('Invalid stored auth user. Clearing local session.', error)
+  }
+
+  return null
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -25,18 +46,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const savedToken = localStorage.getItem('access_token')
-    const savedUser = localStorage.getItem('user')
-    if (savedToken && savedUser) {
+    const parsedUser = parseStoredUser(localStorage.getItem('user'))
+
+    if (savedToken && parsedUser) {
       setToken(savedToken)
-      setUser(JSON.parse(savedUser))
+      setUser(parsedUser)
+    } else if (savedToken || localStorage.getItem('user')) {
+      clearStoredAuth()
     }
+
     setIsLoading(false)
   }, [])
 
   const logout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
+    clearStoredAuth()
     setToken(null)
     setUser(null)
   }

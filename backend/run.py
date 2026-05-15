@@ -12,6 +12,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     import uvicorn
     from app.config import settings
     
@@ -26,11 +30,13 @@ if __name__ == "__main__":
     print(f"API Docs: http://localhost:8000/docs")
     print(f"Health Check: http://localhost:8000/health")
     print("\nPress CTRL+C to stop\n")
+
+    reload_enabled = os.getenv("SHERLOCK_RELOAD", "false").lower() == "true"
     
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=reload_enabled,
         log_level=settings.log_level.lower()
     )

@@ -1,54 +1,36 @@
 import { Command } from "commander";
-import chalk from "chalk";
-import ora from "ora";
 import fs from "fs";
+
 import { useMock } from "../services/client.js";
 import { getIncidentState } from "../services/api.js";
 import { mockIncidentState } from "../services/mock.js";
-import { log } from "../utils/logger.js";
+import { config } from "../config.js";
+import { initSession } from "../shell/session.js";
+import { viewFix } from "../shell/views.js";
+import { failure, info, success, warn } from "../shell/render.js";
 
 export const fixCommand = new Command("fix")
-  .description("Fetch or trigger fix generation for an incident")
+  .description("Fetch generated fix for an incident")
   .argument("<incident-id>", "Incident ID")
   .option("--output <file>", "Save patch to file")
   .action(async (incidentId: string, opts: { output?: string }) => {
+    await initSession();
     const mock = await useMock();
-    if (mock) log.info("Using mock mode");
-
-    const spinner = ora("Fetching fix details...").start();
+    if (mock) info("Using mock mode");
+    if (!mock && !config.apiKey) {
+      warn("Not authenticated. Run: sherlock auth login");
+      return;
+    }
 
     try {
       const state = mock ? mockIncidentState(incidentId) : await getIncidentState(incidentId);
-      spinner.stop();
+      viewFix(incidentId, state);
 
-      if (!state.fix) {
-        log.warn("No fix generated yet for this incident");
-        log.info("Run 'sherlock investigate' first to generate a fix");
-        return;
+      if (opts.output && state.fix?.patch_unified_diff) {
+        fs.writeFileSync(opts.output, state.fix.patch_unified_diff);
+        success(`Patch saved to ${opts.output}`);
       }
-
-      const fix = state.fix;
-      log.section("🛠️  FIX PROPOSAL", chalk.green);
-      log.kv("PR Title", chalk.cyan.bold(fix.pr_title));
-      log.kv("Files Modified", (fix.files_modified || []).join(", "));
-
-      if (fix.patch_unified_diff) {
-        console.log(chalk.bold("\n  Patch:"));
-        log.diff(fix.patch_unified_diff);
-      }
-
-      if (fix.test_code) {
-        console.log(chalk.bold("\n  Test Code:"));
-        console.log(chalk.dim(`  ${fix.test_code}`));
-      }
-
-      if (opts.output) {
-        fs.writeFileSync(opts.output, fix.patch_unified_diff || "");
-        log.success(`Patch saved to ${opts.output}`);
-      }
-
-      console.log(chalk.dim(`\n  Apply: git apply ${opts.output || "<patch-file>"}`));
     } catch (err: any) {
-      spinner.fail(err.message || "Failed to fetch fix");
+      failure(err.message ?? "Failed to fetch fix");
     }
   });

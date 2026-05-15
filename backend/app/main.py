@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.api import incidents, auth
+from app.api import incidents, auth, api_keys
 from app.database import init_db, close_db
 
 # Setup logging
@@ -64,6 +64,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(incidents.router)
+app.include_router(api_keys.router)
 
 
 @app.get("/")

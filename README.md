@@ -1,378 +1,293 @@
 # 🔍 Sherlock — AI Incident Response Co-pilot
 
-> *"From alert to fix PR in 5 minutes — your AI on-call partner that actually reads the codebase."*
+> *From alert to fix PR — your AI on-call partner that actually reads the codebase.*
 
 **Built for IBM Bob Hackathon 2026**
 
-Sherlock adalah AI-powered incident response automation yang menggunakan **IBM Bob** sebagai core engine untuk code-level analysis. Sistem ini mengotomasi proses dari alert detection hingga fix generation dan postmortem documentation.
+Sherlock is an AI-powered incident-response system that uses **IBM Bob** as
+its core engine for code-level reasoning. It automates the on-call cycle:
+parse the alert, understand the repo, propose a fix, write the postmortem.
 
-## 🎯 Problem Statement
+It ships in three surfaces:
 
-Production incidents memakan waktu rata-rata **4.4 jam MTTR** untuk cycle: parse stack trace → find root cause → reproduce → fix → write postmortem. Sherlock mengurangi waktu ini menjadi **< 5 menit** dengan AI-powered multi-agent pipeline.
+- 🖥️ **CLI shell** (`sherlock-cli`) — the on-call surface. Cinematic,
+  slash-command driven, demo-able in 3 minutes.
+- 🌐 **Web UI** (`frontend`) — Next.js dashboard with real-time agent
+  visualization.
+- ⚙️ **Backend** (`backend`) — FastAPI orchestrator + multi-agent pipeline
+  + IBM Bob CLI wrapper.
 
-## ✨ Key Features
+---
 
-- 🧠 **IBM Bob Integration** - Full repository context untuk root cause analysis
-- ⚡ **Multi-Agent Pipeline** - 5 specialized agents bekerja secara berurutan
-- 🔄 **Real-time Streaming** - Live progress updates via Server-Sent Events
-- 🛠️ **Automated Fix Generation** - Code patches dengan test cases
-- 📝 **Auto Postmortem** - Comprehensive documentation generation
-- 🎨 **Modern UI** - Next.js 14 dengan real-time agent visualization
+## 🎯 The problem
+
+Production incidents take an average of **4.4 hours MTTR**: parse stack
+trace → find root cause → reproduce → fix → write postmortem. Existing
+tooling summarizes logs but cannot reason about your codebase.
+
+Sherlock collapses that cycle by giving Bob full repo context and orchestrating
+five specialized agents on top of it.
+
+---
+
+## ✨ The headline demo: the CLI shell
+
+```
+$ sherlock
+
+╔════════════════════════════════════════════════════════╗
+║ Sherlock Incident Response Shell                       ║
+║ Powered by IBM Bob repository intelligence             ║
+╚════════════════════════════════════════════════════════╝
+
+Connected to local backend (http://localhost:8000)
+Workspace      production
+Authenticated  yes
+
+Type /help for available commands
+
+sherlock ›  /resolve fixtures/alerts/alert_race_condition.json
+
+[TRIAGE] Critical severity detected
+  Severity      HIGH
+  Service       checkout-service
+  Confidence: 95%
+
+[FORENSICS] Suspicious commit detected
+  Suspect commit  8f3ab21 — refactor async payment validation (alice)
+
+[ANALYST] Root cause identified
+  Hypothesis:
+    Race condition introduced during async checkout refactor — inventory
+    fetch is not awaited before decrement.
+  Evidence:
+    • stack trace correlation: TypeError on undefined.quantity
+    • commit timeline analysis: 8f3ab21 removed `await` keyword
+    • dependency graph: getInventory() returns Promise<Inventory>
+  Confidence: 87%
+
+[FIX] Patch generated
+  PR title  fix: await inventory fetch in checkout flow
+  Patch:
+    -  const inventory = getInventory(productId);
+    +  const inventory = await getInventory(productId);
+
+[POSTMORTEM] Incident report completed
+
+✓ Investigation complete · incident inc-6x2rxd · 24.1s
+
+sherlock(inc-6x2rxd) ›  /fix          # uses the active incident
+sherlock(inc-6x2rxd) ›  /postmortem
+sherlock(inc-6x2rxd) ›  /open         # opens dashboard in your browser
+```
+
+The shell is **AI-native, conversational, and stateful**. Active incidents
+follow you across commands. See [`sherlock-cli/README.md`](sherlock-cli/README.md)
+for the full spec.
+
+---
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Sherlock System                         │
+│                       Sherlock                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌──────────────┐         ┌──────────────────────────┐    │
-│  │   Next.js    │  SSE    │      FastAPI             │    │
-│  │   Frontend   │◄────────┤      Backend             │    │
-│  │              │         │                          │    │
-│  └──────────────┘         └────────┬─────────────────┘    │
-│                                    │                       │
-│                                    ▼                       │
-│                    ┌───────────────────────────┐          │
-│                    │  Pipeline Orchestrator    │          │
-│                    └───────────┬───────────────┘          │
-│                                │                           │
-│                                ▼                           │
-│        ┌───────────────────────────────────────┐          │
-│        │      Multi-Agent Pipeline             │          │
-│        ├───────────────────────────────────────┤          │
-│        │  1. Triage Agent                      │          │
-│        │  2. Forensics Agent                   │          │
-│        │  3. Bob Analyst Agent ⭐              │          │
-│        │  4. Fix Agent ⭐                      │          │
-│        │  5. Postmortem Agent                  │          │
-│        └───────────────────────────────────────┘          │
+│  ┌──────────┐   ┌───────────┐                              │
+│  │ CLI Shell│   │ Next.js   │                              │
+│  │ (Node)   │   │ Web UI    │                              │
+│  └────┬─────┘   └─────┬─────┘                              │
+│       │               │                                     │
+│       └───────┬───────┘  REST + SSE                        │
+│               │                                             │
+│               ▼                                             │
+│        ┌──────────────┐                                    │
+│        │   FastAPI    │                                    │
+│        │   Backend    │                                    │
+│        └──────┬───────┘                                    │
+│               │                                             │
+│               ▼                                             │
+│  ┌────────────────────────────────────┐                   │
+│  │   Multi-Agent Pipeline             │                   │
+│  │   1. Triage                        │                   │
+│  │   2. Forensics                     │                   │
+│  │   3. Bob Analyst   ⭐              │                   │
+│  │   4. Fix           ⭐              │                   │
+│  │   5. Postmortem                    │                   │
+│  └────────────────────────────────────┘                   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+The **Analyst** and **Fix** agents are where IBM Bob earns its keep:
+full-repo reasoning rather than log summarization.
 
-### Prerequisites
+---
 
-- **Python 3.11+** - Backend runtime
-- **Node.js 18+** - Frontend runtime
-- **Git** - For forensics analysis
-- **IBM Bob CLI** (optional) - For production mode
+## 🚀 Quick start
 
-### Installation
+### Requirements
+
+- Python 3.11+
+- Node.js 18+
+- Git
+- IBM Bob CLI *(optional — mock mode works without it)*
+
+### Install
 
 ```bash
-# Clone repository
-git clone <repository-url>
+git clone <repo-url> Sherlock
 cd Sherlock
 
-# Install backend dependencies
-cd backend
-pip install -r requirements.txt
-cd ..
+# Backend
+cd backend && pip install -r requirements.txt && cd ..
 
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
+# Frontend
+cd frontend && npm install && cd ..
+
+# CLI
+cd sherlock-cli && npm install && npm run build && cd ..
 ```
 
-### Running the Application
+### Run all three
 
-#### Option 1: Manual Start (Recommended for Development)
+**Terminal 1 — backend**
 
-**Terminal 1 - Backend:**
 ```bash
 cd backend
-python run.py
+python run.py                # http://localhost:8000
 ```
 
-Backend akan berjalan di `http://localhost:8000`
+**Terminal 2 — frontend**
 
-**Terminal 2 - Frontend:**
 ```bash
 cd frontend
-npm run dev
+npm run dev                  # http://localhost:3000
 ```
 
-Frontend akan berjalan di `http://localhost:3000`
+**Terminal 3 — CLI**
 
-#### Option 2: Using PowerShell Script
-
-```powershell
-# Windows
-.\start-dev.ps1
+```bash
+cd sherlock-cli
+node dist/index.js           # or `npm link` then `sherlock`
 ```
 
-### First Run
+### Mock mode (no backend, no Bob)
 
-1. Open browser: `http://localhost:3000`
-2. Click "Load sample alert" untuk demo data
-3. Click "Start Analysis"
-4. Watch real-time agent pipeline execution
-5. View generated postmortem
+```bash
+SHERLOCK_MOCK=true sherlock
+```
 
-## 📁 Project Structure
+Runs a deterministic ~24s pipeline. Use this for the demo if Bob quota is a
+concern.
+
+---
+
+## 📁 Project structure
 
 ```
 Sherlock/
-├── backend/                    # FastAPI Backend
+├── sherlock-cli/             # Interactive CLI shell + slash commands
+│   ├── src/
+│   │   ├── shell/            # REPL, dispatcher, render, views, pipeline
+│   │   ├── commands/         # Commander one-shot wrappers
+│   │   └── services/         # Backend client, mock pipeline
+│   └── README.md             # ← Full CLI spec & demo
+│
+├── frontend/                 # Next.js 14 dashboard
+│   ├── app/                  # Pages (incidents, settings, auth)
+│   └── components/           # AgentCard etc.
+│
+├── backend/                  # FastAPI + multi-agent pipeline
 │   ├── app/
-│   │   ├── main.py            # FastAPI application
-│   │   ├── config.py          # Configuration
-│   │   ├── bob_client.py      # IBM Bob CLI wrapper ⭐
-│   │   ├── models/
-│   │   │   └── state.py       # Pydantic models
-│   │   ├── agents/            # Multi-agent system
-│   │   │   ├── triage.py
-│   │   │   ├── forensics.py
-│   │   │   ├── bob_analyst.py ⭐
-│   │   │   ├── fix.py         ⭐
-│   │   │   └── postmortem.py
-│   │   ├── orchestrator/
-│   │   │   └── pipeline.py    # Agent orchestration
-│   │   └── api/
-│   │       └── incidents.py   # API routes
-│   ├── requirements.txt
-│   ├── run.py
+│   │   ├── agents/           # triage / forensics / bob_analyst / fix / postmortem
+│   │   ├── orchestrator/     # Pipeline state machine
+│   │   ├── api/              # REST + SSE
+│   │   ├── auth/             # JWT, API keys
+│   │   ├── models/           # Pydantic + SQLAlchemy
+│   │   ├── bob_client.py     # IBM Bob CLI wrapper ⭐
+│   │   └── database.py       # PostgreSQL via SQLAlchemy
+│   ├── alembic/              # Schema migrations
 │   └── README.md
 │
-├── frontend/                   # Next.js Frontend
-│   ├── app/
-│   │   ├── page.tsx           # Landing page
-│   │   ├── incidents/
-│   │   │   └── [id]/
-│   │   │       └── page.tsx   # Analysis page
-│   │   └── globals.css
-│   ├── components/
-│   │   └── AgentCard.tsx      # Agent status card
-│   ├── package.json
-│   └── README.md
+├── fixtures/
+│   ├── alerts/               # Sample alert payloads
+│   ├── bob_responses/        # Canned Bob responses for mock mode
+│   └── flaky-shop/           # Sample buggy repo (race condition)
 │
-├── fixtures/                   # Sample data
-│   ├── alerts/
-│   │   └── alert_race_condition.json
-│   ├── bob_responses/
-│   │   ├── root_cause_analysis.json
-│   │   └── fix_proposal.json
-│   └── flaky-shop/            # Sample buggy repo
-│       └── src/cart/checkout.ts
-│
-├── README.md                   # This file
-└── SHERLOCK_IMPLEMENTATION_PLAN.md
+└── README.md                 # ← This file
 ```
 
-## 🤖 Multi-Agent Pipeline
+---
 
-### 1. Triage Agent
-**Purpose:** Classify incident severity and error type
+## 🤖 The agents
 
-**Output:**
-- Severity: LOW | MEDIUM | HIGH | CRITICAL
-- Error type: null_pointer | race_condition | timeout | etc
-- Service identification
-- Confidence score
+| # | Agent | Purpose | IBM Bob? |
+|---|---|---|---|
+| 1 | **Triage** | Classify severity, error type, service | No |
+| 2 | **Forensics** | Pull git history, identify suspect commits/files | No |
+| 3 | **Analyst** ⭐ | Reason over the repo to identify root cause | **Yes** |
+| 4 | **Fix** ⭐ | Generate unified-diff patch + regression test | **Yes** |
+| 5 | **Postmortem** | Aggregate findings into a publishable report | Optional |
 
-### 2. Forensics Agent
-**Purpose:** Gather git history and code context
-
-**Output:**
-- Recent commits (last 20)
-- Git blame information
-- Suspect files identification
-- Log excerpts
-
-### 3. Bob Analyst Agent ⭐
-**Purpose:** Root cause analysis dengan IBM Bob
-
-**Output:**
-- Root cause hypothesis
-- Suspect files dengan line numbers
-- Reasoning chain
-- Confidence score
-
-**IBM Bob Integration:**
-```python
-result = await ask_bob(
-    prompt=analysis_prompt,
-    repo_path=repo_path,
-    output_schema=RootCauseAnalysis
-)
-```
-
-### 4. Fix Agent ⭐
-**Purpose:** Generate code patch menggunakan IBM Bob
-
-**Output:**
-- Unified diff patch
-- Test code
-- PR title & description
-- Files modified list
-
-### 5. Postmortem Agent
-**Purpose:** Generate comprehensive documentation
-
-**Output:**
-- Executive summary
-- Timeline
-- Root cause analysis
-- Resolution steps
-- Action items
-- Lessons learned
+---
 
 ## 🔧 Configuration
 
-### Backend Configuration
+### Backend (`backend/.env`)
 
-Create `backend/.env`:
 ```bash
-# Bob CLI Settings
-SHERLOCK_BOB_MOCK_MODE=true          # Enable mock mode
+SHERLOCK_BOB_MOCK_MODE=true
 SHERLOCK_BOB_CLI_PATH=bob
-SHERLOCK_BOB_TIMEOUT=60
-
-# API Settings
+SHERLOCK_DATABASE_URL=postgresql://user:pass@localhost/sherlock
 SHERLOCK_CORS_ORIGINS=["http://localhost:3000"]
-SHERLOCK_LOG_LEVEL=INFO
-
-# Repository Settings
-SHERLOCK_FIXTURES_PATH=../fixtures
-SHERLOCK_SAMPLE_REPO_PATH=../fixtures/flaky-shop
 ```
 
-### Frontend Configuration
+### Frontend (`frontend/.env.local`)
 
-Create `frontend/.env.local`:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## 🧪 Testing
-
-### Backend Tests
+### CLI (`~/.sherlock/config.json`, or env vars)
 
 ```bash
-cd backend
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app
-
-# Run specific test
-pytest tests/agents/test_triage.py
+SHERLOCK_API_URL=http://localhost:8000
+SHERLOCK_API_KEY=sk_sherlock_xxxx
+SHERLOCK_DASHBOARD_URL=http://localhost:3000
+SHERLOCK_MOCK=true       # for demos
 ```
-
-### Frontend Tests
-
-```bash
-cd frontend
-
-# Run linter
-npm run lint
-
-# Build check
-npm run build
-```
-
-## 📊 Demo Scenario
-
-### Sample Bug: Race Condition in Checkout
-
-**Scenario:** E-commerce checkout service experiencing `TypeError: Cannot read property 'quantity' of undefined`
-
-**Root Cause:** Missing `await` on async inventory fetch
-
-**Sherlock Analysis:**
-1. **Triage** (5s) - Identifies HIGH severity, null_pointer error
-2. **Forensics** (10s) - Finds recent commits in checkout.ts
-3. **Bob Analysis** (30s) - Identifies missing await, explains race condition
-4. **Fix Generation** (45s) - Generates patch with await + test case
-5. **Postmortem** (10s) - Creates comprehensive documentation
-
-**Total Time:** ~2 minutes vs. 4+ hours manual debugging
-
-## 🎯 IBM Bob Integration
-
-### Why Bob is Central
-
-1. **Full Repository Context** - Bob understands entire codebase
-2. **Code-Level Reasoning** - Not just log analysis, actual code understanding
-3. **Fix Generation** - Produces production-ready patches
-4. **Structured Output** - JSON responses untuk automation
-
-### Bob Usage Points
-
-- **Root Cause Analysis** - `bob_analyst.py`
-- **Fix Generation** - `fix.py`
-- **Code Explanation** - Throughout pipeline
-
-### Mock Mode
-
-Untuk development tanpa Bob quota:
-```bash
-export SHERLOCK_BOB_MOCK_MODE=true
-```
-
-Mock responses dari `fixtures/bob_responses/`
-
-## 📈 Success Metrics
-
-- ✅ **MTTR Reduction:** 4.4 hours → 5 minutes (98% reduction)
-- ✅ **Automation Rate:** 5/5 agents automated
-- ✅ **Code Context:** Full repository analysis
-- ✅ **Documentation:** Auto-generated postmortems
-- ✅ **Developer Experience:** Real-time progress visibility
-
-## 🚧 Known Limitations
-
-- Requires git repository with history
-- Bob CLI quota limits (use mock mode for development)
-- Single incident processing (no parallel analysis yet)
-- English-only postmortem generation
-
-## 🔮 Future Enhancements
-
-- [ ] Multi-incident dashboard
-- [ ] Slack/PagerDuty integration
-- [ ] Auto-create GitHub PRs
-- [ ] Historical incident analysis
-- [ ] Team collaboration features
-- [ ] Custom agent plugins
-- [ ] Multi-language support
-
-## 🤝 Contributing
-
-1. Fork repository
-2. Create feature branch
-3. Write tests
-4. Submit pull request
-
-## 📄 License
-
-MIT License - IBM Bob Hackathon 2026
-
-## 🙏 Acknowledgments
-
-- **IBM Bob Team** - For the amazing AI dev partner
-- **Hackathon Organizers** - For the opportunity
-- **Open Source Community** - For the tools and libraries
 
 ---
 
-## 📞 Support
+## 📊 What success looks like
 
-- **GitHub Repository:** [https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot](https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot)
-- **Documentation:** See `backend/README.md` and `frontend/README.md`
-- **Issues:** [GitHub Issues](https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/issues)
-- **Demo Video:** [Link to demo]
+- **MTTR**: 4.4 hours → ~25 seconds (mock pipeline) / ~3 minutes (real Bob)
+- **Surfaces**: CLI, Web, and CI/CD-friendly one-shot commands
+- **Bob role**: code-level reasoning at the analyst and fix steps —
+  the differentiator vs. log-summary tools
 
 ---
 
-**Built with ❤️ for IBM Bob Hackathon 2026**
+## 🚧 Known limitations
 
-*Sherlock - Because production incidents shouldn't take 4 hours to debug*
+- Requires a git repository with history for forensics to be useful.
+- Bob CLI quota is finite — the CLI ships with a `SHERLOCK_MOCK=true` fallback.
+- Postmortem prose is English-only.
+- Single incident at a time (no parallel pipelines yet).
 
-🔍 **Powered by IBM Bob**
+---
+
+## 📞 Links
+
+- **CLI README**: [`sherlock-cli/README.md`](sherlock-cli/README.md)
+- **Backend README**: [`backend/README.md`](backend/README.md)
+- **Frontend README**: [`frontend/README.md`](frontend/README.md)
+- **Implementation plan**: [`SHERLOCK_IMPLEMENTATION_PLAN.md`](SHERLOCK_IMPLEMENTATION_PLAN.md)
+- **GitHub**: https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot
+
+---
+
+**Built with IBM Bob for the IBM Bob Hackathon 2026.**
+*Sherlock — because production incidents shouldn't take 4 hours to debug.*

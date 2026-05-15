@@ -1,61 +1,47 @@
 import { Command } from "commander";
-import chalk from "chalk";
-import ora from "ora";
 import fs from "fs";
 import { useMock } from "../services/client.js";
-import { getPostmortem, getIncidentState } from "../services/api.js";
+import { getIncidentState, getPostmortem } from "../services/api.js";
 import { mockPostmortem } from "../services/mock.js";
-import { log } from "../utils/logger.js";
+import { config } from "../config.js";
+import { initSession } from "../shell/session.js";
+import { viewPostmortem } from "../shell/views.js";
+import { failure, info, success, warn } from "../shell/render.js";
 export const postmortemCommand = new Command("postmortem")
-    .description("Fetch or generate postmortem report for an incident")
+    .description("Fetch postmortem report for an incident")
     .argument("<incident-id>", "Incident ID")
     .option("--output <file>", "Save postmortem to file")
     .action(async (incidentId, opts) => {
+    await initSession();
     const mock = await useMock();
     if (mock)
-        log.info("Using mock mode");
-    const spinner = ora("Fetching postmortem...").start();
+        info("Using mock mode");
+    if (!mock && !config.apiKey) {
+        warn("Not authenticated. Run: sherlock auth login");
+        return;
+    }
     try {
-        let postmortemText;
+        let text = "";
         if (mock) {
-            postmortemText = mockPostmortem(incidentId);
+            text = mockPostmortem(incidentId);
         }
         else {
             try {
-                const res = await getPostmortem(incidentId);
-                postmortemText = res.postmortem;
+                const r = await getPostmortem(incidentId);
+                text = r.postmortem;
             }
             catch {
-                // Fallback: try getting from state
                 const state = await getIncidentState(incidentId);
-                postmortemText = state.postmortem || "";
+                text = state.postmortem ?? "";
             }
         }
-        spinner.stop();
-        if (!postmortemText) {
-            log.warn("No postmortem generated yet for this incident");
-            log.info("Run 'sherlock investigate' first to generate a postmortem");
-            return;
-        }
-        log.section("📝 POSTMORTEM", chalk.magenta);
-        console.log();
-        // Render markdown with basic formatting
-        for (const line of postmortemText.split("\n")) {
-            if (line.startsWith("# "))
-                console.log(chalk.bold.white(`  ${line.slice(2)}`));
-            else if (line.startsWith("## "))
-                console.log(chalk.bold.cyan(`\n  ${line.slice(3)}`));
-            else if (line.startsWith("- ["))
-                console.log(chalk.yellow(`  ${line}`));
-            else
-                console.log(chalk.dim(`  ${line}`));
-        }
-        if (opts.output) {
-            fs.writeFileSync(opts.output, postmortemText);
-            log.success(`\n  Postmortem saved to ${opts.output}`);
+        viewPostmortem(incidentId, text);
+        if (opts.output && text) {
+            fs.writeFileSync(opts.output, text);
+            success(`Postmortem saved to ${opts.output}`);
         }
     }
     catch (err) {
-        spinner.fail(err.message || "Failed to fetch postmortem");
+        failure(err.message ?? "Failed to fetch postmortem");
     }
 });

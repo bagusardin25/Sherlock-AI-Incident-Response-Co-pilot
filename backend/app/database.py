@@ -48,6 +48,8 @@ async def init_db():
     """
     Initialize database - create all tables
     """
+    # Import all models so Base.metadata knows about them
+    from app.models.api_key import APIKey  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

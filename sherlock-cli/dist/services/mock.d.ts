@@ -34,6 +34,8 @@ export declare function mockIncidentState(incidentId: string): {
         suspect_files: string[];
     };
     root_cause: {
+        hypothesis: string;
+        evidence: string[];
         root_cause: string;
         suspect_files: {
             path: string;
