@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.api import incidents
+from app.database import init_db, close_db
 
 # Setup logging
 logging.basicConfig(
@@ -22,8 +23,25 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Lifecycle manager untuk startup dan shutdown"""
     logger.info("Starting Sherlock API...")
+    
+    # Initialize database
+    try:
+        logger.info("Initializing database connection...")
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+    
     yield
+    
+    # Cleanup
     logger.info("Shutting down Sherlock API...")
+    try:
+        await close_db()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}")
 
 
 # Create FastAPI app

@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     bob_cli_path: str = "bob"
     bob_timeout: int = 60
     
+    # Database Settings
+    database_url: str = "postgresql+asyncpg://sherlock:sherlock_dev_password@localhost:5432/sherlock_db"
+    database_echo: bool = False
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
+    
     # Repository Settings
     fixtures_path: str = "./fixtures"
     sample_repo_path: str = "./fixtures/flaky-shop"

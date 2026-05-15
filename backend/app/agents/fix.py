@@ -166,17 +166,21 @@ Be precise and production-ready. This fix will be reviewed and potentially deplo
         
         pr_title = f"fix: address {root_cause.root_cause[:50]}..."
         
+        nl = "\n"
+        reasoning_list = nl.join(f"- {r}" for r in root_cause.reasoning_chain)
+        suspect_list = nl.join(f"- {sf.path}" for sf in root_cause.suspect_files)
+        
         pr_body = f"""## Problem
 {root_cause.root_cause}
 
 ## Root Cause Analysis
-{"".join([f"- {r}\n" for r in root_cause.reasoning_chain])}
+{reasoning_list}
 
 ## Fix
 ⚠️ Automated fix generation was not successful. Manual code review and fix required.
 
 ## Suspect Files
-{"".join([f"- {sf.path}\n" for sf in root_cause.suspect_files])}
+{suspect_list}
 
 ## Action Required
 Please review the root cause analysis and implement an appropriate fix.
