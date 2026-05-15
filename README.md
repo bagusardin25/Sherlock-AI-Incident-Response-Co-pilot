@@ -364,8 +364,9 @@ MIT License - IBM Bob Hackathon 2026
 
 ## 📞 Support
 
+- **GitHub Repository:** [https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot](https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot)
 - **Documentation:** See `backend/README.md` and `frontend/README.md`
-- **Issues:** GitHub Issues
+- **Issues:** [GitHub Issues](https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/issues)
 - **Demo Video:** [Link to demo]
 
 ---
