@@ -7,12 +7,18 @@ from sqlalchemy.orm import declarative_base
 from app.config import settings
 
 # Create async engine
+# Supabase requires SSL for external connections
+connect_args = {}
+if "supabase" in settings.database_url:
+    connect_args = {"ssl": True}
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.database_echo,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
     pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
 # Create async session factory
