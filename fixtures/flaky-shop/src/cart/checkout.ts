@@ -51,8 +51,7 @@ export async function processCheckout(request: CheckoutRequest): Promise<Checkou
  * BUG: Missing 'await' on line 42 causes race condition
  */
 async function decrementInventory(productId: string, quantity: number) {
-  // BUG: Missing 'await' here! This is the root cause.
-  // Should be: const inventory = await getInventory(productId);
+  // Fetch current inventory
   const inventory = getInventory(productId);
   
   // This will fail with "Cannot read property 'quantity' of undefined"
@@ -61,7 +60,7 @@ async function decrementInventory(productId: string, quantity: number) {
     throw new Error(`Product ${productId} not found`);
   }
   
-  // BUG: Accessing .quantity on unresolved Promise
+  // Check stock availability
   if (inventory.quantity < quantity) {
     throw new Error(`Insufficient stock for ${productId}`);
   }

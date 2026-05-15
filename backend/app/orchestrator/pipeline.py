@@ -55,43 +55,70 @@ class PipelineOrchestrator:
         self.active_pipelines[incident_id] = state
         
         try:
+            agent_failed = False
+
             # Agent 1: Triage
-            async for event in self._run_triage(state):
-                yield event
+            try:
+                async for event in self._run_triage(state):
+                    yield event
+            except Exception as e:
+                agent_failed = True
+                logger.warning(f"[{incident_id}] Triage failed but pipeline continues: {e}")
             
-            # Agent 2: Forensics
-            async for event in self._run_forensics(state):
-                yield event
+            # Agent 2: Forensics (requires triage, but can proceed with defaults)
+            try:
+                async for event in self._run_forensics(state):
+                    yield event
+            except Exception as e:
+                agent_failed = True
+                logger.warning(f"[{incident_id}] Forensics failed but pipeline continues: {e}")
             
             # Agent 3: Bob Analyst (Root Cause)
-            async for event in self._run_bob_analyst(state):
-                yield event
+            try:
+                async for event in self._run_bob_analyst(state):
+                    yield event
+            except Exception as e:
+                agent_failed = True
+                logger.warning(f"[{incident_id}] Bob analyst failed but pipeline continues: {e}")
             
             # Agent 4: Fix Generation
-            async for event in self._run_fix_generation(state):
-                yield event
+            try:
+                async for event in self._run_fix_generation(state):
+                    yield event
+            except Exception as e:
+                agent_failed = True
+                logger.warning(f"[{incident_id}] Fix generation failed but pipeline continues: {e}")
             
             # Agent 5: Postmortem
-            async for event in self._run_postmortem(state):
-                yield event
+            try:
+                async for event in self._run_postmortem(state):
+                    yield event
+            except Exception as e:
+                agent_failed = True
+                logger.warning(f"[{incident_id}] Postmortem failed but pipeline continues: {e}")
             
-            # Pipeline completed
-            state.status = "completed"
+            # Pipeline completed (possibly with partial failures)
+            state.status = "completed" if not agent_failed else "partial"
             state.updated_at = datetime.utcnow()
             
-            # Save all results to database
+            # Save all results to database (even partial)
             await self._save_results_to_db(state)
+            
+            completion_status = AgentStatus.COMPLETED
+            completion_msg = "Incident analysis pipeline completed successfully"
+            if agent_failed:
+                completion_msg = "Incident analysis pipeline completed with partial results (some agents failed)"
             
             completion_event = AgentEvent(
                 agent_name="pipeline",
-                status=AgentStatus.COMPLETED,
-                message="Incident analysis pipeline completed successfully",
+                status=completion_status,
+                message=completion_msg,
                 data={"incident_id": incident_id}
             )
             state.agent_events.append(completion_event)
             yield completion_event
             
-            logger.info(f"[{incident_id}] Pipeline completed successfully")
+            logger.info(f"[{incident_id}] Pipeline completed {'with partial results' if agent_failed else 'successfully'}")
             
         except Exception as e:
             logger.error(f"[{incident_id}] Pipeline failed: {e}", exc_info=True)
@@ -160,7 +187,7 @@ class PipelineOrchestrator:
             )
             state.agent_events.append(error_event)
             yield error_event
-            raise
+            raise  # Propagate to pipeline-level handler
     
     async def _run_forensics(self, state: IncidentState) -> AsyncIterator[AgentEvent]:
         """Run forensics agent"""
@@ -175,6 +202,17 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
+            # Forensics requires triage result
+            if state.triage is None:
+                skip_event = AgentEvent(
+                    agent_name=agent_name,
+                    status=AgentStatus.FAILED,
+                    message="Forensics skipped: triage result not available"
+                )
+                state.agent_events.append(skip_event)
+                yield skip_event
+                return
+
             # Run forensics (async with AI reasoning)
             result = await forensics.analyze(
                 state.repo_path,
@@ -206,7 +244,7 @@ class PipelineOrchestrator:
             )
             state.agent_events.append(error_event)
             yield error_event
-            raise
+            raise  # Propagate to pipeline-level handler
     
     async def _run_bob_analyst(self, state: IncidentState) -> AsyncIterator[AgentEvent]:
         """Run Bob analyst agent"""
@@ -221,6 +259,20 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
+            # Bob analyst requires triage + forensics
+            if state.triage is None or state.forensics is None:
+                missing = []
+                if state.triage is None: missing.append('triage')
+                if state.forensics is None: missing.append('forensics')
+                skip_event = AgentEvent(
+                    agent_name=agent_name,
+                    status=AgentStatus.FAILED,
+                    message=f"Bob analysis skipped: {', '.join(missing)} result(s) not available"
+                )
+                state.agent_events.append(skip_event)
+                yield skip_event
+                return
+
             # Run Bob analysis (async)
             result = await bob_analyst.analyze(
                 state.repo_path,
@@ -253,7 +305,7 @@ class PipelineOrchestrator:
             )
             state.agent_events.append(error_event)
             yield error_event
-            raise
+            raise  # Propagate to pipeline-level handler
     
     async def _run_fix_generation(self, state: IncidentState) -> AsyncIterator[AgentEvent]:
         """Run fix generation agent"""
@@ -268,6 +320,21 @@ class PipelineOrchestrator:
         yield start_event
         
         try:
+            # Fix generation requires triage + forensics + root_cause
+            if state.triage is None or state.forensics is None or state.root_cause is None:
+                missing = []
+                if state.triage is None: missing.append('triage')
+                if state.forensics is None: missing.append('forensics')
+                if state.root_cause is None: missing.append('root cause')
+                skip_event = AgentEvent(
+                    agent_name=agent_name,
+                    status=AgentStatus.FAILED,
+                    message=f"Fix generation skipped: {', '.join(missing)} result(s) not available"
+                )
+                state.agent_events.append(skip_event)
+                yield skip_event
+                return
+
             # Run fix generation (async)
             result = await fix.generate_fix(
                 state.repo_path,
@@ -301,7 +368,7 @@ class PipelineOrchestrator:
             )
             state.agent_events.append(error_event)
             yield error_event
-            raise
+            raise  # Propagate to pipeline-level handler
     
     async def _run_postmortem(self, state: IncidentState) -> AsyncIterator[AgentEvent]:
         """Run postmortem generation agent"""
@@ -345,7 +412,7 @@ class PipelineOrchestrator:
             )
             state.agent_events.append(error_event)
             yield error_event
-            raise
+            raise  # Propagate to pipeline-level handler
     
     async def _save_results_to_db(self, state: IncidentState):
         """Save pipeline results to database"""

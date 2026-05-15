@@ -19,11 +19,13 @@ export default function Home() {
     router.push('/auth/login')
   }
 
+  const isAuthenticated = Boolean(token && user)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Check auth — redirect to login if not authenticated
-    if (!token || !user) {
+    // Block unauthenticated users
+    if (!isAuthenticated) {
       router.push('/auth/login')
       return
     }
@@ -36,6 +38,8 @@ export default function Home() {
     setIsSubmitting(true)
 
     try {
+      console.log('[Sherlock] Submitting incident with token:', token ? `${token.slice(0, 20)}...` : 'NO TOKEN')
+      
       const response = await fetch('/api/incidents/', {
         method: 'POST',
         headers: {
@@ -49,22 +53,34 @@ export default function Home() {
       })
 
       if (!response.ok) {
+        const errBody = await response.text()
+        console.error(`[Sherlock] Incident submit failed: ${response.status} ${response.statusText}`, errBody)
+        
         if (response.status === 401) {
+          // Token is invalid or expired — force re-login
+          alert('Session expired. Please log in again.')
           logout()
           router.push('/auth/login')
           return
         }
-        const err = await response.json()
-        throw new Error(err.detail || 'Failed to submit incident')
+        
+        try {
+          const errJson = JSON.parse(errBody)
+          throw new Error(errJson.detail || 'Failed to submit incident')
+        } catch {
+          throw new Error(`Server error: ${response.status}`)
+        }
       }
 
       const data = await response.json()
       
       // Navigate to incident page
       router.push(`/incidents/${data.incident_id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting incident:', error)
-      alert('Failed to submit incident. Please try again.')
+      if (!error.message?.includes('Session expired')) {
+        alert(error.message || 'Failed to submit incident. Please try again.')
+      }
       setIsSubmitting(false)
     }
   }
@@ -237,7 +253,34 @@ Occurrences: 47 times in last hour`)
                     </div>
                   </div>
                   
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-5 relative">
+                    {/* Auth Guard Overlay */}
+                    {!isLoading && !isAuthenticated && (
+                      <div className="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 p-6">
+                        <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
+                          <AlertCircle className="w-7 h-7 text-primary" />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <h4 className="text-lg font-bold text-white">Authentication Required</h4>
+                          <p className="text-sm text-slate-400 max-w-xs">Sign in to your account to start analyzing incidents.</p>
+                        </div>
+                        <div className="flex gap-3">
+                          <Link
+                            href="/auth/login"
+                            className="px-6 py-2.5 text-sm font-bold bg-white text-slate-950 hover:bg-slate-200 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                          >
+                            Sign In
+                          </Link>
+                          <Link
+                            href="/auth/register"
+                            className="px-6 py-2.5 text-sm font-medium text-slate-300 bg-white/5 border border-white/10 hover:border-white/20 rounded-xl transition-all"
+                          >
+                            Register
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-3">
                       <div className="flex items-center justify-between px-1">
                         <label htmlFor="alert" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -246,7 +289,8 @@ Occurrences: 47 times in last hour`)
                         <button
                           type="button"
                           onClick={loadSampleAlert}
-                          className="text-[10px] font-bold text-primary hover:text-white transition-colors uppercase tracking-widest"
+                          disabled={!isAuthenticated}
+                          className="text-[10px] font-bold text-primary hover:text-white transition-colors uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Load Example
                         </button>
@@ -256,8 +300,9 @@ Occurrences: 47 times in last hour`)
                           id="alert"
                           value={rawInput}
                           onChange={(e) => setRawInput(e.target.value)}
-                          placeholder="Paste error logs or stack trace..."
-                          className="w-full h-40 px-5 py-4 bg-black/40 border border-white/10 rounded-2xl text-slate-200 placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 font-mono text-sm transition-all resize-none scrollbar-none group-hover/input:border-white/20"
+                          placeholder={isAuthenticated ? "Paste error logs or stack trace..." : "Sign in to paste error logs..."}
+                          className="w-full h-40 px-5 py-4 bg-black/40 border border-white/10 rounded-2xl text-slate-200 placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 font-mono text-sm transition-all resize-none scrollbar-none group-hover/input:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isAuthenticated}
                           required
                         />
                         {/* Scanning Line Animation */}
@@ -278,8 +323,9 @@ Occurrences: 47 times in last hour`)
                           type="url"
                           value={repoUrl}
                           onChange={(e) => setRepoUrl(e.target.value)}
-                          placeholder="https://github.com/org/repo"
-                          className="w-full pl-12 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl text-slate-200 placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all font-mono text-sm group-hover/input:border-white/20"
+                          placeholder={isAuthenticated ? "https://github.com/org/repo" : "Sign in to enter repository URL..."}
+                          className="w-full pl-12 pr-5 py-3.5 bg-black/40 border border-white/10 rounded-2xl text-slate-200 placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all font-mono text-sm group-hover/input:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isAuthenticated}
                           required
                         />
                       </div>
@@ -287,7 +333,7 @@ Occurrences: 47 times in last hour`)
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isAuthenticated}
                       className="group relative w-full overflow-hidden bg-white hover:bg-slate-100 text-slate-950 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_20px_40px_-15px_rgba(255,255,255,0.2)] active:scale-[0.98]"
                     >
                       {isSubmitting ? (
@@ -297,7 +343,7 @@ Occurrences: 47 times in last hour`)
                         </>
                       ) : (
                         <>
-                          <span className="uppercase tracking-widest text-xs">Initialize Analysis</span>
+                          <span className="uppercase tracking-widest text-xs">{isAuthenticated ? 'Initialize Analysis' : 'Sign In to Analyze'}</span>
                           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </>
                       )}

@@ -54,6 +54,7 @@ async def chat_completion(
     payload = {
         "model": settings.openrouter_model,
         "messages": messages,
+        "max_tokens": 4096,
     }
 
     headers = {

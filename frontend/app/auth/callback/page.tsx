@@ -2,11 +2,13 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/lib/auth'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { login } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('Processing authentication...')
 
@@ -24,11 +26,7 @@ function AuthCallbackContent() {
 
     if (accessToken && refreshToken) {
       try {
-        // Store tokens
-        localStorage.setItem('access_token', accessToken)
-        localStorage.setItem('refresh_token', refreshToken)
-
-        // Fetch user info
+        // Fetch user info then store everything via auth context
         fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
@@ -36,12 +34,14 @@ function AuthCallbackContent() {
         })
           .then(res => res.json())
           .then(user => {
-            localStorage.setItem('user', JSON.stringify(user))
+            login(accessToken, refreshToken, user)
             setStatus('success')
             setMessage('Authentication successful! Redirecting...')
             setTimeout(() => router.push('/'), 1500)
           })
           .catch(() => {
+            // Even if /me fails, store tokens with minimal user data
+            login(accessToken, refreshToken, { id: 'unknown', email: 'user' })
             setStatus('success')
             setMessage('Authentication successful! Redirecting...')
             setTimeout(() => router.push('/'), 1500)
@@ -56,7 +56,7 @@ function AuthCallbackContent() {
       setMessage('Invalid authentication response')
       setTimeout(() => router.push('/auth/login'), 3000)
     }
-  }, [searchParams, router])
+  }, [searchParams, router, login])
 
   return (
     <div className="relative">

@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth'
 import { Mail, Lock, User, AlertCircle, Loader2, Chrome, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -38,10 +40,8 @@ export default function RegisterPage() {
 
       const data = await response.json()
       
-      // Store tokens
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('refresh_token', data.refresh_token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      // Store tokens and update auth context state
+      login(data.access_token, data.refresh_token, data.user)
 
       // Redirect to home
       router.push('/')

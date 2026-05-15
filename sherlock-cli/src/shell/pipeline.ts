@@ -107,11 +107,24 @@ export async function runResolvePipeline(opts: RunOptions): Promise<PipelineResu
     finalIncidentId = incidentId;
     for await (const event of mockInvestigate(incidentId)) handleEvent(event);
   } else {
+    // Pre-flight auth check: ensure API key is available
+    if (!config.apiKey) {
+      failure("Authentication required — no API key found.");
+      info("Run /auth login to authenticate with your API key.");
+      return { incidentId: "", status: "failed" };
+    }
+
     let result: { incident_id: string; stream_url: string };
     try {
       result = await submitIncident({ raw_input: opts.rawInput, repo_url: opts.repoUrl });
     } catch (err: any) {
-      failure(`Submission failed: ${err.message ?? err}`);
+      const msg = err.message ?? String(err);
+      if (msg.includes("401") || msg.includes("Unauthorized")) {
+        failure("Authentication failed — your API key may be invalid or expired.");
+        info("Run /auth login to re-authenticate.");
+      } else {
+        failure(`Submission failed: ${msg}`);
+      }
       return { incidentId: "", status: "failed" };
     }
     finalIncidentId = result.incident_id;

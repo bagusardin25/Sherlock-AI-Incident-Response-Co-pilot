@@ -100,6 +100,19 @@ const clearHandler: Handler = async () => {
 };
 
 const resolveHandler: Handler = async (args, ask) => {
+  const sess = getSession();
+  const mock = await useMock();
+
+  // Auth guard: block unauthenticated users unless in mock mode
+  if (!sess.authenticated && !mock) {
+    blank();
+    failure("Authentication required");
+    info("You must be logged in to run incident analysis against the backend.");
+    info(`Run ${chalk.cyan("/auth login")} to authenticate with your API key.`);
+    blank();
+    return "continue";
+  }
+
   let target = args.join(" ").trim();
   if (!target) {
     target = await ask("Enter log file or paste stack trace:");
@@ -110,7 +123,7 @@ const resolveHandler: Handler = async (args, ask) => {
   }
 
   // Pull optional --repo <url>
-  let repoUrl = "https://github.com/org/service";
+  let repoUrl = "https://github.com/bagusardin25/flaky-shop";
   const repoMatch = target.match(/--repo\s+(\S+)/);
   if (repoMatch) {
     repoUrl = repoMatch[1];

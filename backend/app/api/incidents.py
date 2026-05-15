@@ -78,18 +78,25 @@ async def stream_incident_analysis(
     # Verify token manually for SSE (EventSource doesn't support headers).
     # Browser clients pass a JWT; CLI clients pass an API key.
     if not token:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail="Authentication required — no token provided")
+
     current_user = await get_user_from_access_token_or_api_key(db, token)
     if not current_user:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        logger.warning(f"[{incident_id}] SSE stream auth failed — invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token. Please log in again.")
 
     incident = await IncidentService.get_incident(db, incident_id, load_relations=False)
     if not incident:
         raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
 
+    # Extract data from incident BEFORE returning the StreamingResponse,
+    # because the DB session will close after this function returns.
     alert_data = incident.alert_data or {}
     actual_repo_path = alert_data.get("repo_path", "")
     actual_raw_input = alert_data.get("raw_input", "")
+
+    if not actual_repo_path:
+        raise HTTPException(status_code=400, detail="Incident has no repository path — it may not have been set up correctly.")
 
     async def event_generator():
         try:
@@ -98,7 +105,8 @@ async def stream_incident_analysis(
             yield 'data: {"type": "complete"}\n\n'
         except Exception as e:
             logger.error(f"[{incident_id}] Stream error: {e}", exc_info=True)
-            yield f'data: {{"type": "error", "message": "{str(e)}"}}\n\n'
+            error_message = str(e).replace('"', '\\"')
+            yield f'data: {{"type": "error", "message": "{error_message}"}}\n\n'
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"})
 

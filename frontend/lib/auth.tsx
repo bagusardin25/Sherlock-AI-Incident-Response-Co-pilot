@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 
 interface User {
   id: string
@@ -12,6 +12,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
+  login: (accessToken: string, refreshToken: string, user: User) => void
   logout: () => void
   isLoading: boolean
 }
@@ -44,28 +45,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
+  /** Read auth state from localStorage and update React state */
+  const syncFromStorage = useCallback(() => {
     const savedToken = localStorage.getItem('access_token')
     const parsedUser = parseStoredUser(localStorage.getItem('user'))
 
     if (savedToken && parsedUser) {
       setToken(savedToken)
       setUser(parsedUser)
-    } else if (savedToken || localStorage.getItem('user')) {
-      clearStoredAuth()
+    } else {
+      // Partial/corrupt data — clean up
+      if (savedToken || localStorage.getItem('user')) {
+        clearStoredAuth()
+      }
+      setToken(null)
+      setUser(null)
     }
-
-    setIsLoading(false)
   }, [])
 
-  const logout = () => {
+  // Initial load from localStorage
+  useEffect(() => {
+    syncFromStorage()
+    setIsLoading(false)
+  }, [syncFromStorage])
+
+  // Listen for cross-tab storage changes
+  useEffect(() => {
+    const handleStorageChange = () => syncFromStorage()
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [syncFromStorage])
+
+  /** Store tokens + user and update React state in one step */
+  const login = useCallback((accessToken: string, refreshToken: string, userData: User) => {
+    localStorage.setItem('access_token', accessToken)
+    localStorage.setItem('refresh_token', refreshToken)
+    localStorage.setItem('user', JSON.stringify(userData))
+    setToken(accessToken)
+    setUser(userData)
+  }, [])
+
+  const logout = useCallback(() => {
     clearStoredAuth()
     setToken(null)
     setUser(null)
-  }
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

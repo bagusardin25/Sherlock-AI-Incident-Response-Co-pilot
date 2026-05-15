@@ -1,14 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/:path*`,
-      },
-    ]
-  },
+  // NOTE: API proxying is now handled by app/api/[...path]/route.ts
+  // which properly forwards Authorization headers (Next.js rewrites strip them).
 }
 
 module.exports = nextConfig

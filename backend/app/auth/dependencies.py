@@ -64,10 +64,17 @@ async def get_current_user(
     Raises:
         HTTPException: If credentials are invalid or user not found
     """
+    import logging
+    _log = logging.getLogger(__name__)
+    _log.info(f"[auth] get_current_user: credentials={'present' if credentials else 'None'}, x_api_key={'present' if x_api_key else 'None'}")
+
     if credentials:
+        _log.info(f"[auth] Bearer token (first 20 chars): {credentials.credentials[:20]}...")
         user = await get_user_from_access_token_or_api_key(db, credentials.credentials)
         if user:
+            _log.info(f"[auth] User resolved from Bearer token: {user.email}")
             return user
+        _log.warning(f"[auth] Bearer token did NOT resolve to a valid user")
 
     if x_api_key:
         user = await get_user_from_api_key(db, x_api_key)
@@ -87,6 +94,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    _log.warning("[auth] No credentials provided at all")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
