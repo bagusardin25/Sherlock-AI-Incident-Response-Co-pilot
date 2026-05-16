@@ -52,14 +52,14 @@ export default function DocsPage() {
         <p className="text-slate-600 dark:text-slate-300 mb-4">
           For terminal-based workflows, install the Sherlock CLI globally:
         </p>
-        <CodeBlock code="npm install -g sherlock-cli" language="bash" />
+        <CodeBlock code="npm install -g @bagusardin25/sherlock-cli" language="bash" />
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-3">Requires Node.js 18 or higher.</p>
 
         <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
           <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm">4</span>
           Authenticate the CLI
         </h3>
-        <CodeBlock code={`sherlock\nsherlock ›  /auth login\nEnter API key: sk_sherlock_••••••••\n\n✓ Authenticated`} language="bash" />
+        <CodeBlock code={`sherlock-cli auth login\n\nWeb login: https://sherlock-ai.up.railway.app/api/auth/google/login\nEnter API key: sk_sherlock_********\n\nOK Authentication complete\n\nsherlock-cli`} language="bash" />
       </section>
 
       <hr className="my-12 border-black/10 dark:border-slate-800" />
@@ -112,11 +112,11 @@ export default function DocsPage() {
       <section id="cli-commands" className="scroll-mt-32">
         <h2 className="text-3xl tracking-tight !mb-8">CLI Reference</h2>
         <p className="text-slate-600 dark:text-slate-300 mb-6">
-          The Sherlock CLI provides an interactive shell for terminal-based incident response. Launch it by running <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock</code>.
+          The Sherlock CLI provides an interactive shell for terminal-based incident response. Launch it by running <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock-cli</code>.
         </p>
 
         <div className="mb-8">
-          <CodeBlock code={`$ sherlock\n\n╔════════════════════════════════════════════════════════╗\n║ Sherlock Incident Response Shell                       ║\n║ Powered by IBM Bob repository intelligence             ║\n╚════════════════════════════════════════════════════════╝\n\nsherlock ›`} language="bash" />
+          <CodeBlock code={`$ sherlock-cli\n\nSherlock Incident Response Shell\nPowered by IBM Bob repository intelligence\n\nConnected to Sherlock Cloud\nWorkspace      production\nAuthenticated  yes\n\nsherlock ›`} language="bash" />
         </div>
 
         <h3 className="text-xl font-semibold !mt-8 !mb-4">Slash commands</h3>
@@ -147,7 +147,7 @@ export default function DocsPage() {
               </tr>
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
                 <td className="py-3 pr-4"><code className="text-primary">/open [id]</code></td>
-                <td className="py-3">Open incident in the web dashboard</td>
+                <td className="py-3">Open the incident at https://sherlockai-ibm.vercel.app/incidents/[id]</td>
               </tr>
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
                 <td className="py-3 pr-4"><code className="text-primary">/history</code></td>
@@ -155,7 +155,7 @@ export default function DocsPage() {
               </tr>
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
                 <td className="py-3 pr-4"><code className="text-primary">/auth login</code></td>
-                <td className="py-3">Authenticate with your API key</td>
+                <td className="py-3">Open web login, create an API key, and save it locally</td>
               </tr>
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
                 <td className="py-3 pr-4"><code className="text-primary">/help</code></td>
@@ -179,7 +179,7 @@ export default function DocsPage() {
         <p className="text-slate-600 dark:text-slate-300 mb-4">
           Use one-shot commands directly in your pipelines:
         </p>
-        <CodeBlock code={`sherlock resolve crash.log --repo https://github.com/org/service\nsherlock fix inc-a1b2c3d4 --output fix.patch\nsherlock postmortem inc-a1b2c3d4 --output incident.md`} language="bash" />
+        <CodeBlock code={`sherlock-cli resolve crash.log --repo https://github.com/org/service\nsherlock-cli fix inc-a1b2c3d4 --output fix.patch\nsherlock-cli postmortem inc-a1b2c3d4 --output incident.md`} language="bash" />
       </section>
 
       <hr className="my-12 border-black/10 dark:border-slate-800" />
@@ -302,7 +302,7 @@ export default function DocsPage() {
           </div>
           <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Can I use Sherlock in CI/CD pipelines?</h4>
-            <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">Yes. The CLI supports one-shot commands (<code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock resolve</code>, <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock fix --output</code>) designed for automation. Set <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">SHERLOCK_API_KEY</code> as an environment variable in your pipeline.</p>
+            <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">Yes. The CLI supports one-shot commands (<code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock-cli resolve</code>, <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock-cli fix --output</code>) designed for automation. Set <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">SHERLOCK_API_KEY</code> as an environment variable in your pipeline.</p>
           </div>
           <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Do I need the CLI to use Sherlock?</h4>

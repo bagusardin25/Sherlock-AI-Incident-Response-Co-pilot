@@ -22,11 +22,11 @@ const HELP_TEXT = `${chalk.bold.white("  Sherlock CLI")}
   ${chalk.dim("Autonomous AI Incident Response")}
 
 ${chalk.bold.white("  Usage")}
-    ${chalk.dim("$")} sherlock                  ${chalk.dim("# launch interactive shell")}
-    ${chalk.dim("$")} sherlock ${chalk.cyan("<command>")}        ${chalk.dim("# one-shot mode for scripting")}
+    ${chalk.dim("$")} sherlock-cli              ${chalk.dim("# launch interactive shell")}
+    ${chalk.dim("$")} sherlock-cli ${chalk.cyan("<command>")}    ${chalk.dim("# one-shot mode for scripting")}
 
 ${chalk.bold.white("  Interactive shell")}
-    Run ${chalk.cyan("sherlock")} with no arguments to enter the shell.
+    Run ${chalk.cyan("sherlock-cli")} with no arguments to enter the shell.
     Inside, use slash commands: ${chalk.cyan("/help")}, ${chalk.cyan("/resolve")}, ${chalk.cyan("/status")}, ${chalk.cyan("/fix")},
     ${chalk.cyan("/postmortem")}, ${chalk.cyan("/open")}, ${chalk.cyan("/history")}, ${chalk.cyan("/auth")}, ${chalk.cyan("/clear")}, ${chalk.cyan("/exit")}.
 
@@ -37,7 +37,7 @@ ${chalk.bold.white("  One-shot Commands")}
     ${chalk.cyan("postmortem")} ${chalk.dim("<id>")}        Open incident report
 
 ${chalk.bold.white("  Authentication")}
-    ${chalk.cyan("auth login")}             Authenticate CLI
+    ${chalk.cyan("auth login")}             Open web login and save API key
     ${chalk.cyan("auth status")}            View auth status
     ${chalk.cyan("auth logout")}            Remove credentials
 
@@ -72,9 +72,9 @@ if (noArgs) {
 
   const program = new Command();
   program
-    .name("sherlock")
+    .name("sherlock-cli")
     .description("AI Incident Response Co-pilot")
-    .version("1.0.0", "-v, --version", "Show version")
+    .version("1.0.2", "-v, --version", "Show version")
     .option("--mock", "Use local simulation mode (no backend required)");
 
   program.addCommand(authCommand);

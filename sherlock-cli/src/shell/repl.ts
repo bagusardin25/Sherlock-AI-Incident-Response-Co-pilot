@@ -21,6 +21,9 @@ function renderSessionHeader() {
   console.log(chalk.dim(modeLabel(sess.mode, sess.autoFallbackMock)));
   console.log(chalk.dim("Workspace      ") + chalk.white(sess.workspace));
   console.log(chalk.dim("Authenticated  ") + authStr);
+  if (!sess.authenticated) {
+    console.log(chalk.dim("Next           ") + chalk.white("Run /auth login to open web login and create an API key"));
+  }
   blank();
   info(`Type ${chalk.cyan("/")} for command palette`);
   blank();

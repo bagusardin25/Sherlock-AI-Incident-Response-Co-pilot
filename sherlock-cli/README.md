@@ -27,23 +27,23 @@ postmortem) reason through your repository and produce a fix PR + postmortem.
 ## Quick start
 
 ```bash
-cd sherlock-cli
-npm install
-npm run build
-node dist/index.js          # launches the interactive shell
+npm install -g @bagusardin25/sherlock-cli
+sherlock-cli
 ```
 
-To install globally as `sherlock`:
+First login:
 
 ```bash
-npm link
-sherlock                    # same shell, anywhere
+sherlock-cli auth login
 ```
+
+This opens the Sherlock web login. Create an API key in Settings > API Keys,
+then paste the key back into the CLI. The `sherlock` alias is also available.
 
 ### Mock mode (no backend needed)
 
 ```bash
-SHERLOCK_MOCK=true sherlock
+SHERLOCK_MOCK=true sherlock-cli
 ```
 
 Mock mode runs a deterministic ~24-second pipeline with realistic pacing,
@@ -53,7 +53,7 @@ varied confidence scores, and a sample fix patch. Ideal for demos.
 
 ## Interactive shell
 
-Run `sherlock` with no arguments. The shell shows a session header with
+Run `sherlock-cli` with no arguments. The shell shows a session header with
 your workspace, auth state, and connection mode, then drops you at the
 `sherlock ›` prompt.
 
@@ -76,7 +76,7 @@ No need to retype the ID.
 | `/postmortem [id]` | Render the incident report (markdown) |
 | `/open [id]` | Open the incident in the web dashboard (default browser) |
 | `/history` | Recent incidents resolved in this session |
-| `/auth login` | Authenticate the CLI with an API key |
+| `/auth login` | Open web login and save an API key |
 | `/auth status` | Show current auth state and endpoint |
 | `/auth logout` | Remove stored credentials |
 | `/clear` | Clear the screen |
@@ -133,7 +133,7 @@ Next: /fix · /postmortem
 
 sherlock(inc-6x2rxd) ›  /open
 Opening inc-6x2rxd in dashboard…
-http://localhost:3000/incidents/inc-6x2rxd
+https://sherlockai-ibm.vercel.app/incidents/inc-6x2rxd
 ✓ Launched.
 ```
 
@@ -190,7 +190,7 @@ Status    Connected to local backend (http://localhost:8000)
 | `SHERLOCK_API_URL` | Backend URL | `http://localhost:8000` |
 | `SHERLOCK_API_KEY` | Auth key (overrides config file) | — |
 | `SHERLOCK_MOCK` | `true` to force mock mode | `false` |
-| `SHERLOCK_DASHBOARD_URL` | URL `/open` launches | `http://localhost:3000` |
+| `SHERLOCK_DASHBOARD_URL` | URL `/open` launches | `https://sherlockai-ibm.vercel.app` |
 | `SHERLOCK_WORKSPACE` | Label shown in session header | `production` |
 
 The CLI also accepts `--mock` on the command line for one-shot calls.

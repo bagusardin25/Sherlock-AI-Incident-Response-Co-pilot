@@ -21,6 +21,7 @@ import { viewIncidentList, viewIncidentDetail, viewFix, viewPostmortem } from ".
 import { runResolvePipeline } from "./pipeline.js";
 import { getSession, refreshAuth } from "./session.js";
 import { openUrl } from "../utils/opener.js";
+import { config } from "../config.js";
 
 export type DispatchResult = "continue" | "exit";
 
@@ -53,11 +54,17 @@ export function parseLine(raw: string): ParsedCommand | null {
 // ─── dashboard URL resolution ────────────────────────────────────────────────
 
 function dashboardBaseUrl(): string {
-  return (
-    process.env.SHERLOCK_DASHBOARD_URL ||
-    process.env.SHERLOCK_FRONTEND_URL ||
-    "http://localhost:3000"
-  );
+  return config.dashboardUrl;
+}
+
+const DEFAULT_API_URL = "https://sherlock-ai.up.railway.app";
+
+function normalizeUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function webLoginUrl(apiUrl: string): string {
+  return normalizeUrl(process.env.SHERLOCK_WEB_LOGIN_URL || `${apiUrl}/api/auth/google/login`);
 }
 
 // ─── individual handlers ──────────────────────────────────────────────────────
@@ -340,14 +347,20 @@ const authHandler: Handler = async (args, ask) => {
 };
 
 async function authLogin(args: string[], ask: AskFn): Promise<DispatchResult> {
-  let apiUrl = "http://localhost:8000";
+  let apiUrl = DEFAULT_API_URL;
   const idx = args.findIndex((a) => a === "--api-url");
   if (idx !== -1 && args[idx + 1]) apiUrl = args[idx + 1];
+  apiUrl = normalizeUrl(apiUrl);
+  const loginUrl = webLoginUrl(apiUrl);
 
   compactHeader("Sherlock CLI Authentication");
   console.log("");
-  console.log(chalk.dim("API key source:"));
-  console.log(chalk.dim("Dashboard → Settings → API Keys"));
+  console.log(chalk.white("Create your API key in the Sherlock web dashboard."));
+  console.log(chalk.dim("After login, open Settings > API Keys, create a key, then paste it here."));
+  console.log("");
+  console.log(chalk.dim("Web login: ") + chalk.cyan(loginUrl));
+  const opened = openUrl(loginUrl);
+  console.log(chalk.dim(opened ? "Opening browser..." : "Could not open browser automatically."));
   console.log("");
 
   const apiKey = await ask("Enter API key:", { mask: true });
@@ -386,7 +399,7 @@ async function authStatus(): Promise<DispatchResult> {
   } else {
     blank();
     warn("Not authenticated");
-    info("Run /auth login");
+    info("Run /auth login or sherlock-cli auth login");
     blank();
   }
   return "continue";

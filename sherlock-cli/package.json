@@ -1,6 +1,6 @@
 {
   "name": "@bagusardin25/sherlock-cli",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Sherlock AI Incident Response Co-pilot CLI — from alert to fix PR in seconds",
   "author": "Bagus Ardin",
   "license": "MIT",
@@ -19,10 +19,12 @@
   ],
   "main": "dist/index.js",
   "bin": {
+    "sherlock-cli": "dist/index.js",
     "sherlock": "dist/index.js"
   },
   "files": [
     "dist",
+    "scripts/postinstall.js",
     "README.md",
     ".env.example"
   ],
@@ -30,6 +32,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
+    "postinstall": "node scripts/postinstall.js",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

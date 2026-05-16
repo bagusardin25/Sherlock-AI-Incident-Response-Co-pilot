@@ -1,5 +1,4 @@
-import { readConfig } from "../commands/auth.js";
-import { isMockMode } from "../config.js";
+import { config, isMockMode, reloadConfig } from "../config.js";
 import { healthCheck } from "../services/api.js";
 
 export type ConnectionMode = "cloud" | "local" | "mock" | "offline";
@@ -36,9 +35,8 @@ function classifyMode(apiUrl: string, authenticated: boolean, backendOk: boolean
 let _session: SessionState | null = null;
 
 export async function initSession(): Promise<SessionState> {
-  const cfg = readConfig();
-  const apiUrl = cfg.apiUrl ?? "http://localhost:8000";
-  const apiKey = cfg.apiKey ?? "";
+  const apiUrl = config.apiUrl;
+  const apiKey = config.apiKey;
   const authenticated = Boolean(apiKey);
 
   // Probe backend reachability without crashing the shell on failure.
@@ -88,11 +86,11 @@ export function recordIncident(entry: HistoryEntry) {
 
 export async function refreshAuth(): Promise<SessionState> {
   // Re-read on-disk config (e.g. after `/auth login`) and re-classify mode.
-  const cfg = readConfig();
+  reloadConfig();
   if (!_session) return initSession();
 
-  _session.apiUrl = cfg.apiUrl ?? _session.apiUrl;
-  _session.apiKey = cfg.apiKey ?? "";
+  _session.apiUrl = config.apiUrl;
+  _session.apiKey = config.apiKey;
   _session.authenticated = Boolean(_session.apiKey);
 
   let backendOk = false;
