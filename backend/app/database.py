@@ -1,7 +1,6 @@
 """
 Database configuration and session management
 """
-import ssl
 import socket
 import logging
 from urllib.parse import urlparse, urlunparse
@@ -60,13 +59,9 @@ if "supabase" in settings.database_url:
     # Only resolve if using direct connection (not pooler)
     if "pooler.supabase.com" not in settings.database_url:
         db_url = _resolve_ipv4_url(db_url)
-    # Create proper SSL context for Supabase
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
-    connect_args = {
-        "ssl": ssl_ctx,
-    }
+    # Supabase pooler requires SSL; make sure SQLAlchemy actually receives it.
+    connect_args = {"sslmode": "require"}
+    engine_kwargs["connect_args"] = connect_args
     engine_kwargs["poolclass"] = NullPool
 else:
     engine_kwargs["pool_size"] = settings.database_pool_size
