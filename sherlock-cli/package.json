@@ -1,15 +1,28 @@
 {
   "name": "sherlock-cli",
   "version": "1.0.0",
-  "description": "Sherlock AI Incident Response Co-pilot CLI",
+  "description": "Sherlock AI Incident Response Co-pilot CLI — from alert to fix PR in seconds",
+  "author": "Bagus Ardin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot"
+  },
+  "keywords": ["sherlock", "incident-response", "ai", "ibm-bob", "cli", "devops", "sre"],
   "main": "dist/index.js",
   "bin": {
     "sherlock": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.4.3",

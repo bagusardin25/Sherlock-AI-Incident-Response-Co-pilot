@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     api_version: str = "1.0.0"
     api_description: str = "AI Incident Response Co-pilot Backend"
     
+    # Server port (Railway assigns $PORT dynamically)
+    port: int = 8000
+    
     # CORS Settings
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
@@ -58,9 +61,15 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        env_prefix="SHERLOCK_"
+        env_prefix="SHERLOCK_",
+        # Also read PORT without prefix (Railway sets PORT=xxxx directly)
+        extra="ignore",
     )
-
 
 # Global settings instance
 settings = Settings()
+
+# Railway sets PORT directly (not SHERLOCK_PORT), so override if present
+_railway_port = os.environ.get("PORT")
+if _railway_port:
+    settings.port = int(_railway_port)

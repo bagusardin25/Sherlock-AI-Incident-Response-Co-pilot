@@ -25,10 +25,11 @@ if __name__ == "__main__":
     print(f"Version: {settings.api_version}")
     print(f"Bob Mock Mode: {settings.bob_mock_mode}")
     print(f"Log Level: {settings.log_level}")
+    print(f"Port: {settings.port}")
     print("=" * 60)
     print("\nStarting server...")
-    print(f"API Docs: http://localhost:8000/docs")
-    print(f"Health Check: http://localhost:8000/health")
+    print(f"API Docs: http://localhost:{settings.port}/docs")
+    print(f"Health Check: http://localhost:{settings.port}/health")
     print("\nPress CTRL+C to stop\n")
 
     reload_enabled = os.getenv("SHERLOCK_RELOAD", "false").lower() == "true"
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=settings.port,
         reload=reload_enabled,
         log_level=settings.log_level.lower()
     )
