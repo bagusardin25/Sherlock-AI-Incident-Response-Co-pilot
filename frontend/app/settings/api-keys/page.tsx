@@ -163,7 +163,7 @@ export default function APIKeysPage() {
                       Save your secret key!
                     </h4>
                     <p className="text-xs text-emerald-600 dark:text-emerald-400/80 mb-4">
-                      Please copy this API key and store it somewhere safe. For security reasons, you won't be able to see it again.
+                      Please copy this API key and store it somewhere safe. For security reasons, you won&apos;t be able to see it again.
                     </p>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 px-4 py-2.5 rounded-lg bg-white dark:bg-[#0f1115] border border-emerald-200/50 dark:border-emerald-500/20 text-sm font-mono text-slate-900 dark:text-emerald-100 overflow-hidden text-ellipsis whitespace-nowrap shadow-sm">

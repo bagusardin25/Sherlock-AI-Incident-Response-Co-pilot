@@ -142,7 +142,7 @@ export default function Home() {
               </h2>
               
               <p className="text-xl text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl">
-                The world's first multi-agent AI co-pilot that turns production alerts into verified pull requests in under 5 minutes.
+                The world&apos;s first multi-agent AI co-pilot that turns production alerts into verified pull requests in under 5 minutes.
               </p>
 
               <div className="flex items-center gap-8 pt-4">
@@ -301,7 +301,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Bob Fix Generator</h4>
-                  <p className="text-sm text-slate-500 leading-relaxed">Generates high-confidence pull requests that follow your project's coding standards and pass existing tests.</p>
+                  <p className="text-sm text-slate-500 leading-relaxed">Generates high-confidence pull requests that follow your project&apos;s coding standards and pass existing tests.</p>
                 </div>
               </div>
 
@@ -312,7 +312,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Bob Postmortem Writer</h4>
-                  <p className="text-sm text-slate-500 leading-relaxed">Comprehensive markdown postmortems ready for your SRE team's review.</p>
+                  <p className="text-sm text-slate-500 leading-relaxed">Comprehensive markdown postmortems ready for your SRE team&apos;s review.</p>
                 </div>
               </div>
             </div>
