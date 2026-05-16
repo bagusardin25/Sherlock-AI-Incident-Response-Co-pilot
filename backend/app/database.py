@@ -8,6 +8,7 @@ from urllib.parse import urlparse, urlunparse
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,11 @@ def _resolve_ipv4_url(db_url: str) -> str:
 
 # Build connection args and resolve URL
 connect_args = {}
+engine_kwargs = {
+    "echo": settings.database_echo,
+    "pool_pre_ping": True,
+    "connect_args": connect_args,
+}
 db_url = settings.database_url
 
 if "supabase" in settings.database_url:
@@ -59,15 +65,12 @@ if "supabase" in settings.database_url:
         "prepared_statement_cache_size": 0,
         "statement_cache_size": 0,
     }
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs["pool_size"] = settings.database_pool_size
+    engine_kwargs["max_overflow"] = settings.database_max_overflow
 
-engine = create_async_engine(
-    db_url,
-    echo=settings.database_echo,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    pool_pre_ping=True,
-    connect_args=connect_args,
-)
+engine = create_async_engine(db_url, **engine_kwargs)
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -104,6 +107,8 @@ async def init_db():
     """
     # Import all models so Base.metadata knows about them
     from app.models.api_key import APIKey  # noqa: F401
+    from app.models.user import User  # noqa: F401
+    from app.models.db_models import Incident, TriageResult, ForensicsResult, RootCauseAnalysis, FixProposal, AgentEvent  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
