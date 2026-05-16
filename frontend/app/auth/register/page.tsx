@@ -57,26 +57,26 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-[#0f1115] dark:via-[#1a1d24] dark:to-[#0f1115] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 -left-4 w-96 h-96 bg-primary/20 dark:bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md z-10">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent mb-2 tracking-tight">
             Sherlock
           </h1>
-          <p className="text-gray-400">Create your account</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Create your account</p>
         </div>
 
         {/* Register Card */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-3xl blur-xl"></div>
-          <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-8 shadow-2xl">
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-black/5 dark:border-white/10 p-8 shadow-2xl">
             
             {/* Error Message */}
             {error && (
@@ -89,58 +89,58 @@ export default function RegisterPage() {
             )}
 
             {/* Register Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Full Name */}
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name (Optional)
+              <div className="space-y-1.5">
+                <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Full Name <span className="text-slate-400 text-xs font-normal">(Optional)</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
                   <input
                     id="fullName"
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="John Doe"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    className="w-full bg-slate-50/50 dark:bg-slate-950/50 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                   />
                 </div>
               </div>
 
               {/* Email */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
                   <input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    className="w-full bg-slate-50/50 dark:bg-slate-950/50 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                     required
                   />
                 </div>
               </div>
 
               {/* Password */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="space-y-1.5 pb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
                   <input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                    className="w-full bg-slate-50/50 dark:bg-slate-950/50 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                     required
                     minLength={8}
                   />
@@ -152,7 +152,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-primary hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-2xl hover:shadow-primary/50 disabled:shadow-none"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group shadow-lg shadow-primary/25"
               >
                 {isLoading ? (
                   <>
@@ -169,32 +169,29 @@ export default function RegisterPage() {
             </form>
 
             {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-slate-800/80 text-gray-400">Or continue with</span>
-              </div>
+            <div className="mt-6 flex items-center justify-between gap-4">
+              <div className="h-px bg-black/10 dark:bg-white/10 flex-1"></div>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Or sign up with</span>
+              <div className="h-px bg-black/10 dark:bg-white/10 flex-1"></div>
             </div>
 
             {/* Google Signup */}
             <button
               type="button"
               onClick={handleGoogleSignup}
-              className="w-full bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+              className="mt-6 w-full bg-white dark:bg-[#0f1115] hover:bg-slate-50 dark:hover:bg-slate-900 border border-black/10 dark:border-white/10 text-slate-700 dark:text-slate-300 font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-sm"
             >
               <Chrome className="w-5 h-5" />
               <span>Sign up with Google</span>
             </button>
 
-            {/* Login Link */}
-            <div className="mt-6 text-center text-sm text-gray-400">
+            {/* Footer link */}
+            <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-primary hover:text-blue-300 font-medium">
+              <Link href="/auth/login" className="text-primary font-semibold hover:text-primary/80 transition-colors">
                 Sign in
               </Link>
-            </div>
+            </p>
           </div>
         </div>
 
