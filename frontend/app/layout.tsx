@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
-import { Fira_Code, Poppins } from 'next/font/google'
+import { JetBrains_Mono, Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+import { Toaster } from 'sonner'
+import CommandPalette from '@/components/CommandPalette'
 
-const firaCode = Fira_Code({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-fira-code',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 })
 
@@ -27,9 +29,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} ${firaCode.variable}`}>
+    <html lang="en" className={`${poppins.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans min-h-screen bg-background text-foreground selection:bg-primary/30 antialiased transition-colors duration-200">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CommandPalette />
+          <Toaster theme="dark" position="bottom-right" className="font-sans" />
+        </Providers>
       </body>
     </html>
   )

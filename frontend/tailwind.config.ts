@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -34,7 +35,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-poppins)', 'sans-serif'],
-        mono: ['var(--font-fira-code)', 'monospace'],
+        mono: ['var(--font-jetbrains-mono)', 'monospace'],
       },
       animation: {
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import AgentCard from '@/components/AgentCard'
-import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp, Terminal, Activity, FileText } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp, Terminal, Activity, FileText, Rocket } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 interface AgentEvent {
   agent_name: string
@@ -30,11 +31,11 @@ export default function IncidentPage() {
   const incidentId = params.id as string
 
   const [agents, setAgents] = useState<Record<string, AgentState>>({
-    triage: { name: 'Triage Agent', status: 'pending', message: 'Waiting in queue...' },
-    forensics: { name: 'Forensics Agent', status: 'pending', message: 'Waiting in queue...' },
-    bob_analyst: { name: 'Bob Analyst', status: 'pending', message: 'Waiting in queue...' },
-    fix: { name: 'Fix Generator', status: 'pending', message: 'Waiting in queue...' },
-    postmortem: { name: 'Postmortem Writer', status: 'pending', message: 'Waiting in queue...' },
+    triage: { name: 'Bob Triage Engine', status: 'pending', message: 'Waiting in queue...' },
+    forensics: { name: 'Bob Forensics Engine', status: 'pending', message: 'Waiting in queue...' },
+    bob_analyst: { name: 'IBM Bob Analyst', status: 'pending', message: 'Waiting in queue...' },
+    fix: { name: 'Bob Fix Generator', status: 'pending', message: 'Waiting in queue...' },
+    postmortem: { name: 'Bob Postmortem Writer', status: 'pending', message: 'Waiting in queue...' },
   })
 
   const [pipelineStatus, setPipelineStatus] = useState<'connecting' | 'processing' | 'completed' | 'failed'>('connecting')
@@ -42,6 +43,7 @@ export default function IncidentPage() {
   const [postmortem, setPostmortem] = useState<string | null>(null)
   const [startTime] = useState(new Date())
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [isMerged, setIsMerged] = useState(false)
 
   // Timer for elapsed time
   useEffect(() => {
@@ -230,7 +232,7 @@ export default function IncidentPage() {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Terminal className="w-5 h-5 text-slate-500" />
-              <h2 className="text-lg font-bold text-white">Execution Logs</h2>
+              <h2 className="text-lg font-bold text-white">IBM Bob Execution Logs</h2>
             </div>
             <div className="text-xs font-medium text-slate-500 bg-slate-900 border border-white/5 px-3 py-1.5 rounded-full">
               {completedAgents} / {totalAgents} Modules
@@ -285,6 +287,24 @@ export default function IncidentPage() {
             {/* Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <button
+                onClick={() => {
+                  if (isMerged) return;
+                  confetti({
+                    particleCount: 150,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                    zIndex: 9999
+                  });
+                  setIsMerged(true);
+                }}
+                className={`col-span-1 sm:col-span-2 lg:col-span-3 ${isMerged ? 'bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'bg-primary hover:bg-primary/90 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)]'} text-white font-bold py-5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 text-lg group`}
+              >
+                {isMerged ? <CheckCircle2 className="w-6 h-6" /> : <Rocket className="w-6 h-6 group-hover:translate-y-[-2px] transition-transform" />}
+                <span>{isMerged ? 'Fix Merged to Production!' : '🚀 Merge Fix & Close Incident'}</span>
+              </button>
+
+              <button
                 onClick={async () => {
                   try {
                     const res = await fetch(`/api/incidents/${incidentId}/postmortem`, {
@@ -333,7 +353,7 @@ export default function IncidentPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Incident Postmortem</h3>
-                    <p className="text-sm text-slate-400">Generated automatically by Sherlock</p>
+                    <p className="text-sm text-slate-400">Generated automatically by IBM Bob via Sherlock</p>
                   </div>
                 </div>
                 <button

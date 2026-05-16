@@ -43,8 +43,8 @@ export default function RegisterPage() {
       // Store tokens and update auth context state
       login(data.access_token, data.refresh_token, data.user)
 
-      // Redirect to home
-      router.push('/')
+      // Redirect to home with a hard reload to ensure AuthContext syncs perfectly
+      window.location.href = '/scanner'
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {
