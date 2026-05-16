@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { readConfig } from "./commands/auth.js";
 const fileConfig = readConfig();
 export const config = {

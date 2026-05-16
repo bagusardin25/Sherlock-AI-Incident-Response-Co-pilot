@@ -66,9 +66,6 @@ export function readConfig() {
     }
     return {};
 }
-function saveConfig(data) {
-    writeConfig(data);
-}
 // ─── command tree ─────────────────────────────────────────────────────────────
 export const authCommand = new Command("auth").description("Manage Sherlock authentication");
 authCommand
@@ -89,7 +86,7 @@ authCommand
         console.log("");
         return;
     }
-    saveConfig({ apiKey, apiUrl: opts.apiUrl });
+    writeConfig({ apiKey, apiUrl: opts.apiUrl });
     console.log("");
     console.log(chalk.green("✓ ") + chalk.white("Authentication complete"));
     console.log(chalk.dim("Saved to ") + chalk.dim(shortPath(CONFIG_FILE)));

@@ -29,6 +29,9 @@ interface RunOptions {
   showStartup?: boolean;
 }
 
+/** Maximum time (ms) to wait for the SSE pipeline before forcing a timeout. */
+const SSE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 const isTTY = !!process.stdout.isTTY;
 
 function startRunningLine(rawName: string, message: string) {
@@ -81,6 +84,7 @@ export async function runResolvePipeline(opts: RunOptions): Promise<PipelineResu
 
     if (event.status === "completed") {
       const start = agentStarts.get(event.agent_name);
+      const agentElapsed = start ? Date.now() - start : undefined;
       if (start) timings.set(event.agent_name, Date.now() - start);
       endRunningLine();
 
@@ -91,7 +95,12 @@ export async function runResolvePipeline(opts: RunOptions): Promise<PipelineResu
       }
 
       if (event.agent_name === "triage") triageData = event.data;
-      renderCompletedEvent(event.agent_name, event.message, event.data ?? {});
+
+      // Append timing to headline if available
+      const headline = agentElapsed
+        ? `${event.message} ${chalk.dim(`(${elapsed(agentElapsed)})`)}`
+        : event.message;
+      renderCompletedEvent(event.agent_name, headline, event.data ?? {});
       return;
     }
 
@@ -173,17 +182,58 @@ export async function runResolvePipeline(opts: RunOptions): Promise<PipelineResu
   };
 }
 
+/**
+ * Stream SSE events from the backend pipeline.
+ *
+ * Handles three termination signals:
+ *   1. Agent event: agent_name === "pipeline" && status === "completed"
+ *   2. Backend envelope: {"type": "complete"}
+ *   3. Backend envelope: {"type": "error", "message": "..."}
+ *
+ * Also enforces an overall timeout (SSE_TIMEOUT_MS) so the CLI never hangs
+ * indefinitely if the backend stalls.
+ */
 function streamSSE(url: string, handler: (e: AgentEvent) => void): Promise<void> {
   return new Promise((resolve) => {
     const es = new EventSource(url);
+    let resolved = false;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      es.close();
+      resolve();
+    };
+
+    // Safety net: force-close after SSE_TIMEOUT_MS
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        failure(`Pipeline timed out after ${SSE_TIMEOUT_MS / 1000}s — closing connection.`);
+        finish();
+      }
+    }, SSE_TIMEOUT_MS);
 
     es.onmessage = (msg: MessageEvent<string>) => {
       try {
-        const event: AgentEvent = JSON.parse(msg.data);
+        const data = JSON.parse(msg.data);
+
+        // Handle backend termination envelopes
+        if (data.type === "complete") {
+          finish();
+          return;
+        }
+        if (data.type === "error") {
+          failure(`Backend error: ${data.message ?? "unknown"}`);
+          finish();
+          return;
+        }
+
+        // Standard agent event
+        const event = data as AgentEvent;
         handler(event);
         if (event.agent_name === "pipeline" && event.status === "completed") {
-          es.close();
-          resolve();
+          finish();
         }
       } catch {
         /* ignore parse errors */
@@ -191,8 +241,7 @@ function streamSSE(url: string, handler: (e: AgentEvent) => void): Promise<void>
     };
 
     es.onerror = () => {
-      es.close();
-      resolve();
+      finish();
     };
   });
 }

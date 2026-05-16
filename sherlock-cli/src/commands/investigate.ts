@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import fs from "fs";
+import chalk from "chalk";
 
 import { runResolvePipeline } from "../shell/pipeline.js";
 import { initSession } from "../shell/session.js";
@@ -16,8 +17,9 @@ export const investigateCommand = new Command("resolve")
   .description("Resolve a production incident from log file or alert text")
   .argument("<logfile>", "Path to log/alert file or raw error text")
   .option("--repo <url>", "GitHub repository URL", "https://github.com/org/service")
+  .option("--output <file>", "Save pipeline results to JSON file")
   .option("--dry-run", "Show what would happen without submitting")
-  .action(async (logfile: string, opts: { repo: string; dryRun?: boolean }) => {
+  .action(async (logfile: string, opts: { repo: string; output?: string; dryRun?: boolean }) => {
     let rawInput: string;
     if (fs.existsSync(logfile)) {
       try {
@@ -38,5 +40,11 @@ export const investigateCommand = new Command("resolve")
     }
 
     await initSession();
-    await runResolvePipeline({ rawInput, repoUrl: opts.repo });
+    const result = await runResolvePipeline({ rawInput, repoUrl: opts.repo });
+
+    if (opts.output && result.incidentId) {
+      const output = JSON.stringify(result, null, 2);
+      fs.writeFileSync(opts.output, output);
+      console.log(chalk.green("✓ ") + chalk.white(`Results saved to ${opts.output}`));
+    }
   });

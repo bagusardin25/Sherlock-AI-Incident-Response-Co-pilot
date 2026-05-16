@@ -21,6 +21,8 @@ export interface SessionState {
   activeIncident: string | null;
   history: HistoryEntry[];
   startedAt: Date;
+  /** True when the CLI auto-switched to mock because backend was unreachable. */
+  autoFallbackMock: boolean;
 }
 
 function classifyMode(apiUrl: string, authenticated: boolean, backendOk: boolean): ConnectionMode {
@@ -49,15 +51,18 @@ export async function initSession(): Promise<SessionState> {
     }
   }
 
+  const mode = classifyMode(apiUrl, authenticated, backendOk);
+
   _session = {
     workspace: process.env.SHERLOCK_WORKSPACE || "production",
     authenticated,
     apiUrl,
     apiKey,
-    mode: classifyMode(apiUrl, authenticated, backendOk),
+    mode: mode === "offline" ? "mock" : mode,
     activeIncident: null,
     history: [],
     startedAt: new Date(),
+    autoFallbackMock: mode === "offline",
   };
   return _session;
 }
@@ -99,20 +104,30 @@ export async function refreshAuth(): Promise<SessionState> {
     }
   }
   _session.mode = classifyMode(_session.apiUrl, _session.authenticated, backendOk);
+
+  // Auto-fallback to mock when offline
+  if (_session.mode === "offline") {
+    _session.mode = "mock";
+    _session.autoFallbackMock = true;
+  } else {
+    _session.autoFallbackMock = false;
+  }
   return _session;
 }
 
 // ─── display helpers ──────────────────────────────────────────────────────────
 
-export function modeLabel(mode: ConnectionMode): string {
+export function modeLabel(mode: ConnectionMode, autoFallback = false): string {
   switch (mode) {
     case "cloud":
       return "Connected to Sherlock Cloud";
     case "local":
       return "Connected to local backend";
     case "mock":
-      return "Mock mode (local simulation)";
+      return autoFallback
+        ? "Backend unreachable — auto-switched to mock mode"
+        : "Mock mode (local simulation)";
     case "offline":
-      return "Backend unreachable — mock fallback available";
+      return "Backend unreachable — auto-switched to mock mode";
   }
 }

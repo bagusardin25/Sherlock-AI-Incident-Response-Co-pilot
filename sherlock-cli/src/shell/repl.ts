@@ -18,7 +18,7 @@ function renderSessionHeader() {
   const authStr = sess.authenticated
     ? chalk.green("yes")
     : chalk.yellow("no — select /auth login");
-  console.log(chalk.dim(modeLabel(sess.mode)));
+  console.log(chalk.dim(modeLabel(sess.mode, sess.autoFallbackMock)));
   console.log(chalk.dim("Workspace      ") + chalk.white(sess.workspace));
   console.log(chalk.dim("Authenticated  ") + authStr);
   blank();
@@ -136,8 +136,8 @@ function waitForKey(prompt: string, resolve: (val: string | null) => void) {
       ch === "\x1b[3~" || ch === "\x1b" ||
       ch.startsWith("\x1b[")
     ) {
-      // Stay in raw mode, just wait for next key
-      process.stdin.once("data", () => {});  // drain if escape sequence
+      // Multi-byte escape sequences are delivered in a single buffer,
+      // so there is nothing extra to drain. Just keep waiting.
       waitForKey(prompt, resolve);
       return;
     }

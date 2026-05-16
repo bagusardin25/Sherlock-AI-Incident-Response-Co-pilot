@@ -76,9 +76,7 @@ export function readConfig(): { apiKey?: string; apiUrl?: string } {
   return {};
 }
 
-function saveConfig(data: Record<string, string>) {
-  writeConfig(data);
-}
+
 
 // ─── command tree ─────────────────────────────────────────────────────────────
 
@@ -105,7 +103,7 @@ authCommand
       return;
     }
 
-    saveConfig({ apiKey, apiUrl: opts.apiUrl });
+    writeConfig({ apiKey, apiUrl: opts.apiUrl });
 
     console.log("");
     console.log(chalk.green("✓ ") + chalk.white("Authentication complete"));

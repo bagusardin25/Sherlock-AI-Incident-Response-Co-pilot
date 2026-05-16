@@ -12,7 +12,7 @@ import {
   CONFIG_FILE_PATH,
 } from "../commands/auth.js";
 
-import { useMock } from "../services/client.js";
+import { useMock, invalidateBackendCache } from "../services/client.js";
 import { getIncidentState, listIncidents, getPostmortem } from "../services/api.js";
 import { mockIncidentList, mockIncidentState, mockPostmortem } from "../services/mock.js";
 
@@ -114,20 +114,38 @@ const resolveHandler: Handler = async (args, ask) => {
   }
 
   let target = args.join(" ").trim();
+
+  // Pull optional --repo <url> from inline args (power-user shorthand)
+  let repoUrl = "";
+  const repoMatch = target.match(/--repo\s+(\S+)/);
+  if (repoMatch) {
+    repoUrl = repoMatch[1];
+    target = target.replace(repoMatch[0], "").trim();
+  }
+
+  // Step 1: Get alert / error input
   if (!target) {
-    target = await ask("Enter log file or paste stack trace:");
+    blank();
+    console.log(chalk.bold.white("  Step 1 · Incident Input"));
+    console.log(chalk.dim("  Paste a stack trace, provide a log file path, or use a sample alert."));
+    console.log(chalk.dim(`  Sample: ${chalk.cyan("fixtures/alerts/alert_race_condition.json")}`));
+    blank();
+    target = await ask("Alert file or error text:");
   }
   if (!target) {
     warn("No input provided.");
     return "continue";
   }
 
-  // Pull optional --repo <url>
-  let repoUrl = "https://github.com/bagusardin25/flaky-shop";
-  const repoMatch = target.match(/--repo\s+(\S+)/);
-  if (repoMatch) {
-    repoUrl = repoMatch[1];
-    target = target.replace(repoMatch[0], "").trim();
+  // Step 2: Get repo URL (only prompt if not already provided via --repo)
+  if (!repoUrl) {
+    const defaultRepo = "https://github.com/bagusardin25/flaky-shop";
+    blank();
+    console.log(chalk.bold.white("  Step 2 · Target Repository"));
+    console.log(chalk.dim(`  Default: ${chalk.cyan(defaultRepo)}`));
+    blank();
+    const userRepo = await ask("Repository URL (Enter for default):");
+    repoUrl = userRepo.trim() || defaultRepo;
   }
 
   let rawInput: string;
@@ -143,6 +161,7 @@ const resolveHandler: Handler = async (args, ask) => {
   }
 
   blank();
+  info(`Repository: ${chalk.cyan(repoUrl)}`);
   await runResolvePipeline({ rawInput, repoUrl });
   blank();
   return "continue";
@@ -341,6 +360,7 @@ async function authLogin(args: string[], ask: AskFn): Promise<DispatchResult> {
   }
 
   writeConfig({ apiKey, apiUrl });
+  invalidateBackendCache();
   await refreshAuth();
 
   blank();
@@ -377,6 +397,7 @@ async function authLogout(): Promise<DispatchResult> {
   blank();
   if (fs.existsSync(CONFIG_FILE_PATH)) {
     clearConfig();
+    invalidateBackendCache();
     await refreshAuth();
     success("Credentials removed");
   } else {

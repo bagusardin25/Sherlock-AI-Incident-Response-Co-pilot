@@ -101,9 +101,6 @@ class PipelineOrchestrator:
             state.status = "completed" if not agent_failed else "partial"
             state.updated_at = datetime.utcnow()
             
-            # Save all results to database (even partial)
-            await self._save_results_to_db(state)
-            
             completion_status = AgentStatus.COMPLETED
             completion_msg = "Incident analysis pipeline completed successfully"
             if agent_failed:
@@ -136,7 +133,16 @@ class PipelineOrchestrator:
             yield error_event
         
         finally:
-            # Cleanup
+            # ALWAYS save results to DB — even if client disconnected mid-stream.
+            # This was previously in the try block before yield, but generators
+            # can be cancelled by GeneratorExit when the SSE client closes the
+            # connection, causing _save_results_to_db to never execute.
+            try:
+                await self._save_results_to_db(state)
+            except Exception as save_err:
+                logger.error(f"[{incident_id}] Save in finally failed: {save_err}")
+
+            # Cleanup temp repo
             repo_manager.cleanup(incident_id)
             if incident_id in self.active_pipelines:
                 del self.active_pipelines[incident_id]
@@ -420,15 +426,18 @@ class PipelineOrchestrator:
             Incident, TriageResult as DBTriage, ForensicsResult as DBForensics,
             RootCauseAnalysis as DBRCA, FixProposal as DBFix,
         )
+        logger.info(f"[{state.incident_id}] _save_results_to_db: starting")
+        logger.info(f"[{state.incident_id}]   triage={state.triage is not None}, forensics={state.forensics is not None}, root_cause={state.root_cause is not None}, fix={state.fix is not None}, postmortem={state.postmortem is not None}")
         try:
             async with AsyncSessionLocal() as db:
                 incident = await db.get(Incident, state.incident_id)
                 if not incident:
-                    logger.error(f"[{state.incident_id}] Incident not found in DB")
+                    logger.error(f"[{state.incident_id}] Incident not found in DB — cannot save results")
                     return
 
                 incident.status = "completed"
                 incident.updated_at = datetime.utcnow()
+                logger.info(f"[{state.incident_id}]   status → completed")
 
                 if state.triage:
                     t = state.triage
@@ -439,6 +448,7 @@ class PipelineOrchestrator:
                         summary=t.summary,
                         recommended_actions=[f"Service: {t.service}", f"Confidence: {t.confidence}"],
                     ))
+                    logger.info(f"[{state.incident_id}]   + triage saved")
 
                 if state.forensics:
                     f = state.forensics
@@ -448,6 +458,7 @@ class PipelineOrchestrator:
                         git_history=[c.model_dump(mode="json") for c in f.recent_commits[:10]],
                         blame_info=[b.model_dump(mode="json") for b in f.blame_info[:10]],
                     ))
+                    logger.info(f"[{state.incident_id}]   + forensics saved")
 
                 if state.root_cause:
                     rc = state.root_cause
@@ -458,6 +469,7 @@ class PipelineOrchestrator:
                         evidence=[sf.path for sf in rc.suspect_files],
                         confidence=str(rc.confidence),
                     ))
+                    logger.info(f"[{state.incident_id}]   + root_cause saved")
 
                 if state.fix:
                     fx = state.fix
@@ -468,15 +480,17 @@ class PipelineOrchestrator:
                         test_plan=[fx.test_code or "No test generated"],
                         rollback_plan=fx.pr_body[:500],
                     ))
+                    logger.info(f"[{state.incident_id}]   + fix saved")
 
                 if state.postmortem:
                     incident.postmortem_text = state.postmortem
+                    logger.info(f"[{state.incident_id}]   + postmortem saved ({len(state.postmortem)} chars)")
 
                 await db.commit()
-                logger.info(f"[{state.incident_id}] Results saved to database")
+                logger.info(f"[{state.incident_id}] ✓ All results committed to database")
 
         except Exception as e:
-            logger.error(f"[{state.incident_id}] Failed to save results to DB: {e}")
+            logger.error(f"[{state.incident_id}] ✗ Failed to save results to DB: {e}", exc_info=True)
 
     def get_incident_state(self, incident_id: str) -> Optional[IncidentState]:
         """Get current state untuk incident"""

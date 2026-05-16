@@ -98,17 +98,44 @@ async def stream_incident_analysis(
     if not actual_repo_path:
         raise HTTPException(status_code=400, detail="Incident has no repository path — it may not have been set up correctly.")
 
-    async def event_generator():
+    # Use a queue to decouple pipeline execution from the SSE response.
+    # The pipeline runs in a background task so it always completes and
+    # saves results to the DB, even if the client disconnects early.
+    import asyncio
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def pipeline_worker():
+        """Run the pipeline in the background, pushing events into the queue."""
         try:
             async for event in run_incident_analysis(actual_raw_input, actual_repo_path, incident_id):
-                yield f"data: {event.model_dump_json()}\n\n"
-            yield 'data: {"type": "complete"}\n\n'
+                await queue.put(event.model_dump_json())
         except Exception as e:
-            logger.error(f"[{incident_id}] Stream error: {e}", exc_info=True)
+            logger.error(f"[{incident_id}] Pipeline worker error: {e}", exc_info=True)
             error_message = str(e).replace('"', '\\"')
-            yield f'data: {{"type": "error", "message": "{error_message}"}}\n\n'
+            await queue.put(f'{{"type": "error", "message": "{error_message}"}}')
+        finally:
+            # Sentinel: signal the SSE generator to stop
+            await queue.put(None)
+
+    # Start pipeline in background — it will outlive the SSE connection if needed
+    asyncio.create_task(pipeline_worker())
+
+    async def event_generator():
+        try:
+            while True:
+                data = await queue.get()
+                if data is None:
+                    # Pipeline finished — send completion envelope and stop
+                    yield 'data: {"type": "complete"}\n\n'
+                    break
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected — that's fine, the pipeline_worker task
+            # continues independently and will still save results to DB.
+            logger.info(f"[{incident_id}] SSE client disconnected — pipeline continues in background")
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"})
+
 
 
 @router.get("/{incident_id}/state")
