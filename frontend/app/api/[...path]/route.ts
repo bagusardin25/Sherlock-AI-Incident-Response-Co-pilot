@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_BACKEND = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+function getBackendUrl() {
+  const backendUrl =
+    process.env.SHERLOCK_API_URL ||
+    process.env.API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:8000'
+
+  try {
+    return new URL(backendUrl)
+  } catch {
+    throw new Error(`Invalid backend API URL: ${backendUrl}`)
+  }
+}
 
 /**
  * Catch-all API route proxy.
@@ -14,7 +26,17 @@ async function handler(
   { params }: { params: { path: string[] } }
 ) {
   const path = params.path.join('/')
-  const url = new URL(`/api/${path}`, API_BACKEND)
+  let url: URL
+
+  try {
+    url = new URL(`/api/${path}`, getBackendUrl())
+  } catch (error: any) {
+    console.error(`[API Proxy] ${error.message}`)
+    return NextResponse.json(
+      { detail: error.message },
+      { status: 500 }
+    )
+  }
 
   // Forward query string
   request.nextUrl.searchParams.forEach((value, key) => {
@@ -92,7 +114,7 @@ async function handler(
   } catch (error: any) {
     console.error(`[API Proxy] Error forwarding to ${url}:`, error.message)
     return NextResponse.json(
-      { detail: 'Backend service unavailable' },
+      { detail: `Backend service unavailable at ${url.origin}` },
       { status: 502 }
     )
   }

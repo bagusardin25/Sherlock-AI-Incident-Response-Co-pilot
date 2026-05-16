@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { Mail, Lock, User, AlertCircle, Loader2, Chrome, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -34,8 +35,7 @@ export default function RegisterPage() {
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Registration failed')
+        throw new Error(await getApiErrorMessage(response, 'Registration failed'))
       }
 
       const data = await response.json()

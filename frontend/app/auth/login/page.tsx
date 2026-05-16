@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { Mail, Lock, AlertCircle, Loader2, Chrome } from 'lucide-react'
 
 export default function LoginPage() {
@@ -29,8 +30,7 @@ export default function LoginPage() {
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Login failed')
+        throw new Error(await getApiErrorMessage(response, 'Login failed'))
       }
 
       const data = await response.json()
