@@ -9,6 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+# v2: pooler fix
 
 # Copy fixtures from project root (needed for sample repo)
 # NOTE: When using docker-compose, fixtures are mounted as a volume instead
