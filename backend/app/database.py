@@ -6,6 +6,7 @@ import socket
 import logging
 from urllib.parse import urlparse, urlunparse
 from typing import AsyncGenerator
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
@@ -40,8 +41,6 @@ def _resolve_ipv4_url(db_url: str) -> str:
     except Exception as e:
         logger.warning(f"Could not resolve IPv4 for DB host: {e}, using original URL")
     return db_url
-
-
 # Build connection args and resolve URL
 connect_args = {}
 engine_kwargs = {
@@ -51,19 +50,22 @@ engine_kwargs = {
 }
 db_url = settings.database_url
 
+url = make_url(settings.database_url)
+if url.drivername == "postgresql+asyncpg":
+    url = url.set(drivername="postgresql+psycopg")
+db_url = str(url)
+
 if "supabase" in settings.database_url:
     # Force IPv4 resolution for Supabase (Railway IPv6 workaround)
     # Only resolve if using direct connection (not pooler)
     if "pooler.supabase.com" not in settings.database_url:
-        db_url = _resolve_ipv4_url(settings.database_url)
+        db_url = _resolve_ipv4_url(db_url)
     # Create proper SSL context for Supabase
     ssl_ctx = ssl.create_default_context()
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE
     connect_args = {
         "ssl": ssl_ctx,
-        "prepared_statement_cache_size": 0,
-        "statement_cache_size": 0,
     }
     engine_kwargs["poolclass"] = NullPool
 else:
