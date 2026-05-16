@@ -34,6 +34,7 @@ async function handler(
     const fetchOptions: RequestInit = {
       method: request.method,
       headers,
+      redirect: 'manual',
     }
 
     // Forward body for non-GET/HEAD methods
@@ -45,26 +46,48 @@ async function handler(
 
     // Check if this is an SSE stream
     const contentType = response.headers.get('content-type') || ''
+
+    if (response.status >= 300 && response.status < 400) {
+      const redirectHeaders = new Headers()
+      response.headers.forEach((value, key) => {
+        if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
+          redirectHeaders.append(key, value)
+        }
+      })
+
+      return new NextResponse(null, {
+        status: response.status,
+        headers: redirectHeaders,
+      })
+    }
     
     if (contentType.includes('text/event-stream')) {
       // Stream SSE responses
+      const streamHeaders = new Headers()
+      response.headers.forEach((value, key) => {
+        if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
+          streamHeaders.append(key, value)
+        }
+      })
+
       return new NextResponse(response.body, {
         status: response.status,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
+        headers: streamHeaders,
       })
     }
 
     // Forward regular response
     const responseBody = await response.text()
+    const responseHeaders = new Headers()
+    response.headers.forEach((value, key) => {
+      if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
+        responseHeaders.append(key, value)
+      }
+    })
+
     return new NextResponse(responseBody, {
       status: response.status,
-      headers: {
-        'Content-Type': contentType || 'application/json',
-      },
+      headers: responseHeaders,
     })
   } catch (error: any) {
     console.error(`[API Proxy] Error forwarding to ${url}:`, error.message)

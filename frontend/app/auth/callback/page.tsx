@@ -27,7 +27,7 @@ function AuthCallbackContent() {
     if (accessToken && refreshToken) {
       try {
         // Fetch user info then store everything via auth context
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/me`, {
+        fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }

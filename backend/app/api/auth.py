@@ -321,9 +321,8 @@ async def google_callback(
         logger.info(f"User logged in via Google: {user.email}")
         
         # Redirect to frontend with tokens
-        frontend_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:3000"
         return RedirectResponse(
-            url=f"{frontend_url}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
+            url=f"{settings.frontend_url}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
         )
         
     except Exception as e:
