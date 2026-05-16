@@ -4,7 +4,7 @@ Authentication API Routes
 import logging
 from typing import Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -232,7 +232,7 @@ async def get_current_user_info(
 
 
 @router.get("/google/login")
-async def google_login():
+async def google_login(request: Request):
     """
     Initiate Google OAuth login
     """
@@ -243,12 +243,12 @@ async def google_login():
         )
     
     redirect_uri = settings.google_redirect_uri
-    return await oauth.google.authorize_redirect(redirect_uri)
+    return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/google/callback")
 async def google_callback(
-    code: str,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -262,7 +262,7 @@ async def google_callback(
     
     try:
         # Exchange code for token
-        token = await oauth.google.authorize_access_token()
+        token = await oauth.google.authorize_access_token(request)
         
         # Get user info
         user_info = token.get('userinfo')

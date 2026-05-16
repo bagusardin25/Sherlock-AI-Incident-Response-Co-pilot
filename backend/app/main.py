@@ -4,6 +4,7 @@ Sherlock API - Main FastAPI application
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -51,6 +52,9 @@ app = FastAPI(
     description=settings.api_description,
     lifespan=lifespan
 )
+
+# Session middleware (required by Authlib OAuth)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 # Configure CORS
 app.add_middleware(
