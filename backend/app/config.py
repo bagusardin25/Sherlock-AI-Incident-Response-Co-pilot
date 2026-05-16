@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     
+    # GitHub Integration (for pushing postmortem/fix files to repos)
+    github_token: str = ""
+    
     # Google OAuth Settings
     google_client_id: str = ""
     google_client_secret: str = ""

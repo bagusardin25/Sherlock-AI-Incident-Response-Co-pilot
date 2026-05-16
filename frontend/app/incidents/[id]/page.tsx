@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth'
 import AgentCard from '@/components/AgentCard'
 import { AlertCircle, CheckCircle2, Clock, XCircle, Home, Download, RefreshCw, Sparkles, TrendingUp, Terminal, Activity, FileText, Rocket } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface AgentEvent {
   agent_name: string
@@ -44,6 +46,10 @@ export default function IncidentPage() {
   const [startTime] = useState(new Date())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isMerged, setIsMerged] = useState(false)
+  const [isMerging, setIsMerging] = useState(false)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [commitUrl, setCommitUrl] = useState<string | null>(null)
+  const [fileUrl, setFileUrl] = useState<string | null>(null)
 
   // Timer for elapsed time
   useEffect(() => {
@@ -154,22 +160,22 @@ export default function IncidentPage() {
   return (
     <div className="min-h-screen bg-transparent flex flex-col font-sans">
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
+      <header className="fixed top-0 w-full z-50 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-950/60">
         <div className="container mx-auto px-4 lg:px-8 py-3">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-6">
-              <button onClick={() => router.push('/')} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-white/5 hover:bg-slate-800 transition-colors">
-                <Home className="w-5 h-5 text-slate-400" />
+              <button onClick={() => router.push('/')} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                <Home className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               </button>
               <div>
                 <div className="flex items-center gap-3 mb-0.5">
                   <Activity className="w-4 h-4 text-primary" />
-                  <h1 className="text-base font-bold text-white tracking-tight">Active Investigation</h1>
+                  <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Active Investigation</h1>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="text-slate-500">ID: <span className="text-slate-300 font-mono">{incidentId}</span></span>
-                  <span className="w-1 h-1 rounded-full bg-slate-700"></span>
-                  <span className="text-slate-500">Time elapsed: <span className="text-primary font-mono font-medium">{formatTime(elapsedTime)}</span></span>
+                  <span className="text-slate-600 dark:text-slate-500">ID: <span className="text-slate-900 dark:text-slate-300 font-mono">{incidentId}</span></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                  <span className="text-slate-600 dark:text-slate-500">Time elapsed: <span className="text-primary font-mono font-medium">{formatTime(elapsedTime)}</span></span>
                 </div>
               </div>
             </div>
@@ -182,7 +188,7 @@ export default function IncidentPage() {
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pipeline Progress</span>
                     <span className="text-[10px] font-bold text-primary">{Math.round(progress)}%</span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.8)]"
                       style={{ width: `${progress}%` }}
@@ -193,10 +199,10 @@ export default function IncidentPage() {
 
               {/* Status Badge */}
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-bold uppercase tracking-wider ${
-                pipelineStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+                pipelineStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
                 pipelineStatus === 'processing' ? 'bg-primary/10 border-primary/20 text-primary' :
-                pipelineStatus === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                'bg-red-500/10 border-red-500/20 text-red-400'
+                pipelineStatus === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
               }`}>
                 {pipelineStatus === 'connecting' && <Clock className="w-3.5 h-3.5 animate-pulse" />}
                 {pipelineStatus === 'processing' && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
@@ -213,14 +219,14 @@ export default function IncidentPage() {
         {/* Error Display */}
         {error && (
           <div className="mb-8 animate-fade-in-up">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 backdrop-blur-xl">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-5 backdrop-blur-xl">
               <div className="flex gap-4 items-start">
-                <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-5 h-5 text-red-400" />
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-red-400 mb-1">Pipeline Interrupted</h3>
-                  <p className="text-sm text-red-200/80">{error}</p>
+                  <h3 className="text-sm font-bold text-red-800 dark:text-red-400 mb-1">Pipeline Interrupted</h3>
+                  <p className="text-sm text-red-600 dark:text-red-200/80">{error}</p>
                 </div>
               </div>
             </div>
@@ -232,9 +238,9 @@ export default function IncidentPage() {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Terminal className="w-5 h-5 text-slate-500" />
-              <h2 className="text-lg font-bold text-white">IBM Bob Execution Logs</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">IBM Bob Execution Logs</h2>
             </div>
-            <div className="text-xs font-medium text-slate-500 bg-slate-900 border border-white/5 px-3 py-1.5 rounded-full">
+            <div className="text-xs font-medium text-slate-600 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/5 px-3 py-1.5 rounded-full">
               {completedAgents} / {totalAgents} Modules
             </div>
           </div>
@@ -256,28 +262,28 @@ export default function IncidentPage() {
         {/* Completion Section */}
         {pipelineStatus === 'completed' && (
           <div className="max-w-4xl mx-auto mt-12 space-y-8 animate-fade-in-up">
-            <div className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.05)]">
+            <div className="relative overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-8 shadow-sm dark:shadow-[0_0_50px_rgba(16,185,129,0.05)]">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500 to-emerald-500/0"></div>
               
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex items-center gap-5">
                   <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white mb-1">Resolution Ready</h3>
-                    <p className="text-sm text-slate-400">Pull request generated and postmortem finalized.</p>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Resolution Ready</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Pull request generated and postmortem finalized.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-6">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-white">{formatTime(elapsedTime)}</div>
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatTime(elapsedTime)}</div>
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-1">Resolution Time</div>
                   </div>
-                  <div className="w-px h-10 bg-white/10"></div>
+                  <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-emerald-400">~4h</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">~4h</div>
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-1">Time Saved</div>
                   </div>
                 </div>
@@ -286,23 +292,72 @@ export default function IncidentPage() {
 
             {/* Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {mergeError && (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-center gap-3 text-sm">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
+                  <span className="text-red-700 dark:text-red-300">{mergeError}</span>
+                </div>
+              )}
+
               <button
-                onClick={() => {
-                  if (isMerged) return;
-                  confetti({
-                    particleCount: 150,
-                    spread: 80,
-                    origin: { y: 0.6 },
-                    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
-                    zIndex: 9999
-                  });
-                  setIsMerged(true);
+                onClick={async () => {
+                  if (isMerged || isMerging) return;
+                  setIsMerging(true);
+                  setMergeError(null);
+                  try {
+                    const res = await fetch(`/api/incidents/${incidentId}/merge`, {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      throw new Error(data.detail || 'Merge failed');
+                    }
+                    confetti({
+                      particleCount: 150,
+                      spread: 80,
+                      origin: { y: 0.6 },
+                      colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                      zIndex: 9999
+                    });
+                    setIsMerged(true);
+                    if (data.commit_url) setCommitUrl(data.commit_url);
+                    if (data.file_url) setFileUrl(data.file_url);
+                  } catch (e: any) {
+                    setMergeError(e.message);
+                  } finally {
+                    setIsMerging(false);
+                  }
                 }}
-                className={`col-span-1 sm:col-span-2 lg:col-span-3 ${isMerged ? 'bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'bg-primary hover:bg-primary/90 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)]'} text-white font-bold py-5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 text-lg group`}
+                disabled={isMerged || isMerging}
+                className={`col-span-1 sm:col-span-2 lg:col-span-3 ${isMerged ? 'bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : isMerging ? 'bg-primary/70 cursor-wait' : 'bg-primary hover:bg-primary/90 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)]'} text-white font-bold py-5 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 text-lg group disabled:opacity-80`}
               >
-                {isMerged ? <CheckCircle2 className="w-6 h-6" /> : <Rocket className="w-6 h-6 group-hover:translate-y-[-2px] transition-transform" />}
-                <span>{isMerged ? 'Fix Merged to Production!' : '🚀 Merge Fix & Close Incident'}</span>
+                {isMerging ? (
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : isMerged ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : (
+                  <Rocket className="w-6 h-6 group-hover:translate-y-[-2px] transition-transform" />
+                )}
+                <span>{isMerging ? 'Pushing to GitHub...' : isMerged ? 'Fix Merged to Production!' : '🚀 Merge Fix & Close Incident'}</span>
               </button>
+
+              {isMerged && (commitUrl || fileUrl) && (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="flex-1">
+                    <span className="text-emerald-800 dark:text-emerald-300 font-medium">Postmortem report pushed to GitHub!</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {fileUrl && (
+                      <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors">View File</a>
+                    )}
+                    {commitUrl && (
+                      <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg text-xs font-bold transition-colors">View Commit</a>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={async () => {
@@ -317,7 +372,7 @@ export default function IncidentPage() {
                     alert(e.message)
                   }
                 }}
-                className="bg-white hover:bg-slate-100 text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                className="bg-slate-100 dark:bg-white hover:bg-slate-200 dark:hover:bg-slate-100 text-slate-900 dark:text-slate-950 font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-sm dark:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
               >
                 <FileText className="w-5 h-5" />
                 <span>Read Postmortem</span>
@@ -325,17 +380,17 @@ export default function IncidentPage() {
               
               <button
                 onClick={() => window.location.reload()}
-                className="bg-slate-900 hover:bg-slate-800 border border-white/10 text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+                className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
               >
-                <RefreshCw className="w-5 h-5 text-slate-400" />
+                <RefreshCw className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                 <span>Rerun Analysis</span>
               </button>
               
               <button
                 onClick={() => router.push('/')}
-                className="bg-slate-900 hover:bg-slate-800 border border-white/10 text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 sm:col-span-2 lg:col-span-1"
+                className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 sm:col-span-2 lg:col-span-1"
               >
-                <Home className="w-5 h-5 text-slate-400" />
+                <Home className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                 <span>New Incident</span>
               </button>
             </div>
@@ -345,15 +400,15 @@ export default function IncidentPage() {
         {/* Postmortem Display */}
         {postmortem && (
           <div className="max-w-4xl mx-auto mt-12 animate-fade-in-up">
-            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 p-6 md:p-8 shadow-2xl">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/5">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-white/10 p-6 md:p-8 shadow-xl dark:shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-200 dark:border-white/5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center border border-secondary/20">
                     <Download className="w-6 h-6 text-secondary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Incident Postmortem</h3>
-                    <p className="text-sm text-slate-400">Generated automatically by IBM Bob via Sherlock</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Incident Postmortem</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Generated automatically by IBM Bob via Sherlock</p>
                   </div>
                 </div>
                 <button
@@ -365,16 +420,16 @@ export default function IncidentPage() {
                     a.download = `postmortem-${incidentId}.md`
                     a.click()
                   }}
-                  className="shrink-0 flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all border border-white/5"
+                  className="shrink-0 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-all border border-slate-200 dark:border-white/5"
                 >
                   <Download className="w-4 h-4" />
                   Download .MD
                 </button>
               </div>
-              <div className="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-a:text-primary prose-pre:bg-slate-950 prose-pre:border prose-pre:border-white/5">
-                <pre className="text-sm text-slate-300 whitespace-pre-wrap bg-slate-950 rounded-xl p-6 border border-white/5 overflow-x-auto font-mono leading-relaxed">
+              <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-slate-900 dark:prose-headings:text-white prose-a:text-primary prose-pre:bg-slate-50 dark:prose-pre:bg-slate-950 prose-pre:border-slate-200 dark:prose-pre:border-white/5">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="markdown-content">
                   {postmortem}
-                </pre>
+                </ReactMarkdown>
               </div>
             </div>
           </div>
