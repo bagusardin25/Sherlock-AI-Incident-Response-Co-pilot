@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { getGoogleLoginUrl } from '@/lib/oauth'
 import { Mail, Lock, User, AlertCircle, Loader2, Chrome, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -53,7 +54,7 @@ export default function RegisterPage() {
   }
 
   const handleGoogleSignup = () => {
-    window.location.href = '/api/auth/google/login'
+    window.location.href = getGoogleLoginUrl()
   }
 
   return (
