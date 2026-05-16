@@ -14,7 +14,7 @@ COPY . .
 # Copy fixtures from project root (needed for sample repo)
 # NOTE: When using docker-compose, fixtures are mounted as a volume instead
 
-EXPOSE 8000
+EXPOSE 8080
 
 # Use run.py which reads PORT from env via Python (Railway sets it dynamically)
 CMD ["python", "run.py"]
