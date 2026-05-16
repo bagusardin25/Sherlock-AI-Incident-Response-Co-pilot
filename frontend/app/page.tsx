@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
-import { Search, Zap, GitBranch, FileText, AlertCircle, Sparkles, ArrowRight, Code2, Brain, Clock, LogOut, User as UserIcon, Terminal, Key, ChevronDown, Loader2, Sun, Moon } from 'lucide-react'
+import { Search, Zap, GitBranch, FileText, AlertCircle, Sparkles, ArrowRight, Code2, Brain, Clock, LogOut, User as UserIcon, Terminal, Key, ChevronDown, Loader2, Sun, Moon, Github, Book } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
@@ -222,8 +222,30 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Animated Ribbon / Ticker Tape */}
+          <div className="mt-32 -mx-6 md:-mx-12 overflow-hidden border-y border-black/5 dark:border-white/5 bg-slate-100/50 dark:bg-black/20 py-4 relative flex items-center">
+            {/* Gradient Fades for edges */}
+            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-slate-50 dark:from-[#0f1115] to-transparent z-10"></div>
+            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-50 dark:from-[#0f1115] to-transparent z-10"></div>
+            
+            <div className="flex w-max animate-infinite-scroll">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex items-center justify-around gap-16 px-8">
+                  {['AI Triage Engine', 'Automated Forensics', 'Zero Downtime', 'Root Cause Analysis', 'One-Click Resolution', '24/7 Monitoring', 'Intelligent PR Generation'].map((text, j) => (
+                    <div key={j} className="flex items-center gap-4">
+                      <Sparkles className="w-3 h-3 text-primary/50" />
+                      <span className="text-xs font-black text-slate-500/80 dark:text-slate-400/80 tracking-widest uppercase whitespace-nowrap">
+                        {text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Bento Grid Features */}
-          <div className="mt-48 space-y-12">
+          <div className="mt-32 space-y-12">
             <div className="text-center space-y-4">
               <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Engineered for Reliability</h3>
               <p className="text-slate-500 max-w-2xl mx-auto font-medium">Four specialized agents working in concert to handle the entire lifecycle of an incident.</p>
@@ -329,26 +351,110 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Modern Footer */}
-      <footer className="border-t border-black/5 dark:border-white/5 py-12 bg-slate-50 dark:bg-black/20">
-        <div className="container mx-auto px-6 max-w-7xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center border border-black/10 dark:border-white/10">
-                <Terminal className="w-4 h-4 text-slate-500" />
+      {/* Massive Watermark Footer */}
+      <footer className="relative border-t border-black/5 dark:border-white/5 bg-slate-50 dark:bg-slate-950 overflow-hidden flex flex-col pt-16">
+        
+        {/* Sitemap Grid */}
+        <div className="relative z-10 border-b border-black/5 dark:border-white/5 pb-16">
+          <div className="container mx-auto px-6 max-w-7xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-0 lg:divide-x divide-black/5 dark:divide-white/5">
+              
+              {/* Stay Updated */}
+              <div className="space-y-6 lg:pr-12">
+                <h3 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-900 dark:text-white">Stay Updated</h3>
+                <a href="https://discord.gg/GG65Nx96" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between w-full bg-primary/10 hover:bg-primary/20 text-primary dark:text-primary-400 font-medium px-4 py-3 rounded-lg transition-colors border border-primary/20">
+                  <span className="text-sm font-bold">Join Discord</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+                <div className="pt-6 flex justify-center">
+                  <div className="w-24 h-24 border border-black/10 dark:border-white/10 rounded-full flex flex-col items-center justify-center bg-transparent">
+                    <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">Powered By</span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white mt-1">IBM BOB</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm font-bold text-slate-600 tracking-tight">
-                SHERLOCK <span className="text-[10px] font-medium ml-2 opacity-50">v1.0.0-PROD</span>
-              </p>
+
+              {/* Solutions */}
+              <div className="space-y-6 lg:pl-12">
+                <h4 className="text-sm font-bold text-success/80 dark:text-success">Solutions</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                  <li><Link href="/scanner" className="hover:text-primary dark:hover:text-white transition-colors">Incident Scanner</Link></li>
+                  <li><Link href="/scanner" className="hover:text-primary dark:hover:text-white transition-colors">Triage Engine</Link></li>
+                  <li><Link href="/scanner" className="hover:text-primary dark:hover:text-white transition-colors">Automated Forensics</Link></li>
+                  <li><Link href="/scanner" className="hover:text-primary dark:hover:text-white transition-colors">PR Generation</Link></li>
+                  <li><Link href="/scanner" className="hover:text-primary dark:hover:text-white transition-colors">Postmortem AI</Link></li>
+                </ul>
+              </div>
+
+              {/* Resources */}
+              <div className="space-y-6 lg:pl-12">
+                <h4 className="text-sm font-bold text-success/80 dark:text-success">Resources</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                  <li><Link href="/docs" className="hover:text-primary dark:hover:text-white transition-colors">Documentation</Link></li>
+                  <li><Link href="/docs" className="hover:text-primary dark:hover:text-white transition-colors">API Reference</Link></li>
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/commits/main" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Changelog</a></li>
+                  <li><a href="https://lablab.ai/ai-hackathons/ibm-bob-hackathon/" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">IBM Hackathon</a></li>
+                </ul>
+              </div>
+
+              {/* Company */}
+              <div className="space-y-6 lg:pl-12">
+                <h4 className="text-sm font-bold text-success/80 dark:text-success">Company</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">About Us</a></li>
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/wiki" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Blog</a></li>
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Use Cases</a></li>
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/issues" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Contact</a></li>
+                </ul>
+              </div>
+
+              {/* Legal */}
+              <div className="space-y-6 lg:pl-12">
+                <h4 className="text-sm font-bold text-success/80 dark:text-success">Legal</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-600 dark:text-slate-400">
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Terms & Conditions</a></li>
+                  <li><a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-primary dark:hover:text-white transition-colors">Privacy Policy</a></li>
+                </ul>
+              </div>
+
             </div>
-            <div className="flex items-center gap-8 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-              <Link href="/docs" className="hover:text-slate-900 dark:hover:text-white transition-colors">Documentation</Link>
-              <Link href="/docs" className="hover:text-slate-900 dark:hover:text-white transition-colors">API Reference</Link>
-              <a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white transition-colors">GitHub</a>
+          </div>
+        </div>
+
+        {/* Bottom Nav Line */}
+        <div className="relative z-10 border-b border-black/5 dark:border-white/5 bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-xl">
+          <div className="container mx-auto px-6 max-w-7xl py-5 flex flex-col md:flex-row items-center justify-between gap-6">
+            
+            {/* Left: Brand Icons */}
+            <div className="flex items-center gap-3">
+              <Link href="/docs" className="w-9 h-9 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Documentation">
+                <Book className="w-4 h-4" />
+              </Link>
+              <Link href="/docs" className="w-9 h-9 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="API Reference">
+                <Code2 className="w-4 h-4" />
+              </Link>
+              <a href="https://github.com/bagusardin25/Sherlock-AI-Incident-Response-Co-pilot" target="_blank" rel="noopener noreferrer" className="w-9 h-9 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="GitHub Repository">
+                <Github className="w-4 h-4" />
+              </a>
             </div>
-            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-600">
-              © 2026 IBM Bob Hackathon. Built with Precision.
-            </p>
+            
+            {/* Right Copyright */}
+            <div className="flex items-center">
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">
+                Copyright © 2026 Sherlock AI
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Giant Watermark Text */}
+        <div className="relative flex-grow flex items-end pointer-events-none select-none w-full pt-16 pb-4 [mask-image:linear-gradient(to_bottom,white_40%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,white_40%,transparent_100%)] overflow-hidden">
+          <div className="flex w-max animate-infinite-scroll-reverse">
+            {[...Array(2)].map((_, i) => (
+              <h2 key={i} className="text-[18vw] font-black italic leading-none tracking-tighter text-transparent [-webkit-text-stroke:1px_rgba(0,0,0,0.15)] dark:[-webkit-text-stroke:1px_rgba(255,255,255,0.15)] whitespace-nowrap pr-8 md:pr-16">
+                SHERLOCK × IBM BOB
+              </h2>
+            ))}
           </div>
         </div>
       </footer>
@@ -362,6 +468,20 @@ export default function Home() {
         .animate-gradient {
           background-size: 200% auto;
           animation: gradient 4s linear infinite;
+        }
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-reverse {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+        .animate-infinite-scroll {
+          animation: scroll 30s linear infinite;
+        }
+        .animate-infinite-scroll-reverse {
+          animation: scroll-reverse 50s linear infinite;
         }
         .scrollbar-none::-webkit-scrollbar {
           display: none;
