@@ -52,7 +52,7 @@ db_url = settings.database_url
 url = make_url(settings.database_url)
 if url.drivername == "postgresql+asyncpg":
     url = url.set(drivername="postgresql+psycopg")
-db_url = str(url)
+db_url = url.render_as_string(hide_password=False)
 
 if "supabase" in settings.database_url:
     # Force IPv4 resolution for Supabase (Railway IPv6 workaround)
