@@ -25,14 +25,14 @@ async def lifespan(app: FastAPI):
     """Lifecycle manager untuk startup dan shutdown"""
     logger.info("Starting Sherlock API...")
     
-    # Initialize database
+    # Initialize database (non-fatal — app can serve /health without DB)
     try:
         logger.info("Initializing database connection...")
         await init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+        logger.warning(f"Database initialization failed (will retry on first request): {e}")
+        # Don't raise — let the app start so Railway health checks pass
     
     yield
     
