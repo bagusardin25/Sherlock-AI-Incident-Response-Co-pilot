@@ -1,19 +1,53 @@
 """
 Database configuration and session management
 """
+import ssl
+import socket
+import logging
+from urllib.parse import urlparse, urlunparse
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from app.config import settings
 
-# Create async engine
-# Supabase requires SSL for external connections
+logger = logging.getLogger(__name__)
+
+
+def _resolve_ipv4_url(db_url: str) -> str:
+    """
+    Resolve database hostname to IPv4 to work around Railway IPv6 issues.
+    Railway defaults to IPv6 but Supabase direct connections don't support it.
+    """
+    try:
+        parsed = urlparse(db_url)
+        if parsed.hostname:
+            # Resolve to IPv4 explicitly
+            ipv4 = socket.getaddrinfo(parsed.hostname, parsed.port, socket.AF_INET)[0][4][0]
+            # Replace hostname with IPv4 address
+            netloc = parsed.netloc.replace(parsed.hostname, ipv4)
+            resolved = urlunparse(parsed._replace(netloc=netloc))
+            logger.info(f"Resolved DB host {parsed.hostname} -> {ipv4}")
+            return resolved
+    except Exception as e:
+        logger.warning(f"Could not resolve IPv4 for DB host: {e}, using original URL")
+    return db_url
+
+
+# Build connection args and resolve URL
 connect_args = {}
+db_url = settings.database_url
+
 if "supabase" in settings.database_url:
-    connect_args = {"ssl": True}
+    # Force IPv4 resolution for Supabase (Railway IPv6 workaround)
+    db_url = _resolve_ipv4_url(settings.database_url)
+    # Create proper SSL context for Supabase
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+    connect_args = {"ssl": ssl_ctx}
 
 engine = create_async_engine(
-    settings.database_url,
+    db_url,
     echo=settings.database_echo,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
