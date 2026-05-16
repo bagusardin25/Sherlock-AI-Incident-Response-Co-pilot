@@ -40,23 +40,34 @@ $ sherlock
 ║ Powered by IBM Bob repository intelligence             ║
 ╚════════════════════════════════════════════════════════╝
 
-Connected to local backend (http://localhost:8000)
+Connected to local backend
 Workspace      production
 Authenticated  yes
 
-Type /help for available commands
+Type / for command palette
 
-sherlock ›  /resolve fixtures/alerts/alert_race_condition.json
+sherlock › /resolve
 
-[TRIAGE] Critical severity detected
+  Step 1 · Incident Input
+  Paste a stack trace, provide a log file path, or use a sample alert.
+  Sample: fixtures/alerts/alert_race_condition.json
+
+? Alert file or error text: fixtures/alerts/alert_race_condition.json
+
+  Step 2 · Target Repository
+  Default: https://github.com/bagusardin25/flaky-shop
+
+? Repository URL (Enter for default): ↵
+
+[TRIAGE] Critical severity detected (2.0s)
   Severity      HIGH
   Service       checkout-service
   Confidence: 95%
 
-[FORENSICS] Suspicious commit detected
+[FORENSICS] Suspicious commit detected (2.6s)
   Suspect commit  8f3ab21 — refactor async payment validation (alice)
 
-[ANALYST] Root cause identified
+[ANALYST] Root cause identified (4.5s)
   Hypothesis:
     Race condition introduced during async checkout refactor — inventory
     fetch is not awaited before decrement.
@@ -64,21 +75,22 @@ sherlock ›  /resolve fixtures/alerts/alert_race_condition.json
     • stack trace correlation: TypeError on undefined.quantity
     • commit timeline analysis: 8f3ab21 removed `await` keyword
     • dependency graph: getInventory() returns Promise<Inventory>
-  Confidence: 87%
+  Confidence: 92%
 
-[FIX] Patch generated
+[FIX] Patch generated (3.8s)
   PR title  fix: await inventory fetch in checkout flow
   Patch:
     -  const inventory = getInventory(productId);
     +  const inventory = await getInventory(productId);
 
-[POSTMORTEM] Incident report completed
+[POSTMORTEM] Incident report completed (2.6s)
 
-✓ Investigation complete · incident inc-6x2rxd · 24.1s
+✓ Investigation complete · incident inc-22b89bd2 · 11.8s
+  Root cause in 4.5s · patch in 3.8s
 
-sherlock(inc-6x2rxd) ›  /fix          # uses the active incident
-sherlock(inc-6x2rxd) ›  /postmortem
-sherlock(inc-6x2rxd) ›  /open         # opens dashboard in your browser
+sherlock(inc-22b89bd2) › /fix          # review generated patch
+sherlock(inc-22b89bd2) › /postmortem   # full incident report
+sherlock(inc-22b89bd2) › /open         # opens dashboard in your browser
 ```
 
 The shell is **AI-native, conversational, and stateful**. Active incidents
@@ -131,8 +143,10 @@ full-repo reasoning rather than log summarization.
 
 - Python 3.11+
 - Node.js 18+
+- PostgreSQL 14+
 - Git
-- IBM Bob API key *(optional — mock mode works without it)*
+- IBM Bob API key *(provided at hackathon start — mock mode works without it)*
+- OpenRouter API key *(for triage, forensics, and postmortem agents)*
 
 ### Install
 
@@ -192,22 +206,25 @@ Sherlock/
 │   ├── src/
 │   │   ├── shell/            # REPL, dispatcher, render, views, pipeline
 │   │   ├── commands/         # Commander one-shot wrappers
-│   │   └── services/         # Backend client, mock pipeline
+│   │   ├── services/         # Backend client, mock pipeline
+│   │   └── utils/            # Browser opener
 │   └── README.md             # ← Full CLI spec & demo
 │
 ├── frontend/                 # Next.js 14 dashboard
-│   ├── app/                  # Pages (incidents, settings, auth)
-│   └── components/           # AgentCard etc.
+│   ├── app/                  # Pages (landing, auth, incidents, scanner, settings, docs)
+│   └── components/           # AgentCard, theme, layout
 │
 ├── backend/                  # FastAPI + multi-agent pipeline
 │   ├── app/
 │   │   ├── agents/           # triage / forensics / bob_analyst / fix / postmortem
-│   │   ├── orchestrator/     # Pipeline state machine
-│   │   ├── api/              # REST + SSE
-│   │   ├── auth/             # JWT, API keys
+│   │   ├── orchestrator/     # Pipeline state machine (background task + DB save)
+│   │   ├── api/              # REST + SSE streaming
+│   │   ├── auth/             # JWT, API keys, Google OAuth
 │   │   ├── models/           # Pydantic + SQLAlchemy
+│   │   ├── services/         # Incident CRUD, repo manager
 │   │   ├── bob_client.py     # IBM Bob API client ⭐
-│   │   └── database.py       # PostgreSQL via SQLAlchemy
+│   │   ├── openrouter_client.py  # OpenRouter API client
+│   │   └── database.py       # PostgreSQL via async SQLAlchemy
 │   ├── alembic/              # Schema migrations
 │   └── README.md
 │
@@ -215,6 +232,8 @@ Sherlock/
 │   ├── alerts/               # Sample alert payloads
 │   ├── bob_responses/        # Canned Bob responses for mock mode
 │   └── flaky-shop/           # Sample buggy repo (race condition)
+│
+├── design-system/            # Design tokens and style guides
 │
 └── README.md                 # ← This file
 ```
@@ -245,7 +264,15 @@ SHERLOCK_BOB_MODEL=bob-v1
 SHERLOCK_BOB_MOCK_MODE=true          # set false when you have a real key
 SHERLOCK_BOB_TIMEOUT=120
 
-SHERLOCK_DATABASE_URL=postgresql://user:pass@localhost/sherlock
+# OpenRouter — used by triage, forensics, and postmortem agents
+SHERLOCK_OPENROUTER_API_KEY=sk-or-v1-xxxx
+SHERLOCK_OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# Database
+SHERLOCK_DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/sherlock_db
+
+# Auth
+SHERLOCK_SECRET_KEY=your-jwt-secret
 SHERLOCK_CORS_ORIGINS=["http://localhost:3000"]
 ```
 
@@ -255,32 +282,37 @@ SHERLOCK_CORS_ORIGINS=["http://localhost:3000"]
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### CLI (`~/.sherlock/config.json`, or env vars)
+### CLI (`sherlock-cli/.env` or `~/.sherlock/config.json`)
 
 ```bash
+# .env file (auto-loaded via dotenv)
 SHERLOCK_API_URL=http://localhost:8000
-SHERLOCK_API_KEY=sk_sherlock_xxxx
+SHERLOCK_API_KEY=sk_sherlock_xxxx     # from Dashboard → Settings → API Keys
 SHERLOCK_DASHBOARD_URL=http://localhost:3000
-SHERLOCK_MOCK=true       # for demos
+SHERLOCK_MOCK=true                    # for demos without backend
 ```
+
+The CLI also supports interactive authentication via `/auth login`.
 
 ---
 
 ## 📊 What success looks like
 
-- **MTTR**: 4.4 hours → ~25 seconds (mock pipeline) / ~3 minutes (real Bob)
-- **Surfaces**: CLI, Web, and CI/CD-friendly one-shot commands
+- **MTTR**: 4.4 hours → **~12 seconds** (real backend) / ~24s (mock pipeline)
+- **Surfaces**: CLI, Web, and CI/CD-friendly one-shot commands (`sherlock resolve crash.log --output results.json`)
 - **Bob role**: code-level reasoning at the analyst and fix steps —
   the differentiator vs. log-summary tools
+- **Resilience**: pipeline runs in background — results always saved to DB even if client disconnects
 
 ---
 
 ## 🚧 Known limitations
 
 - Requires a git repository with history for forensics to be useful.
-- Bob CLI quota is finite — the CLI ships with a `SHERLOCK_MOCK=true` fallback.
+- Bob API quota is finite — the CLI auto-falls back to mock mode when backend is unreachable.
 - Postmortem prose is English-only.
-- Single incident at a time (no parallel pipelines yet).
+- Single incident at a time per user (no parallel pipelines yet).
+- CLI auto-detects backend availability every 30s (configurable TTL cache).
 
 ---
 
