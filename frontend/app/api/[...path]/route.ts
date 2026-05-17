@@ -61,9 +61,11 @@ async function handler(
 
     // Forward body for non-GET/HEAD methods
     if (!['GET', 'HEAD'].includes(request.method)) {
-      fetchOptions.body = await request.text()
+      const body = await request.text()
+      if (body) fetchOptions.body = body
     }
 
+    console.log(`[API Proxy] ${request.method} ${url.toString()}`)
     const response = await fetch(url.toString(), fetchOptions)
 
     // Check if this is an SSE stream

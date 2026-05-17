@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # CORS Settings
-    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "https://sherlockai-ibm.vercel.app"]
     
     # IBM Bob API Settings (Analyst + Fix agents)
     bob_mock_mode: bool = False

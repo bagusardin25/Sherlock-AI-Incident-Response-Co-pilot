@@ -39,9 +39,10 @@ export default function ScannerPage() {
     setIsSubmitting(true)
 
     try {
-      console.log('[Sherlock] Submitting incident with token:', token ? `${token.slice(0, 20)}...` : 'NO TOKEN')
+      const API_URL = 'https://sherlock-ai.up.railway.app'
+      console.log('[Sherlock] Submitting incident to backend:', API_URL)
       
-      const response = await fetch('/api/incidents/', {
+      const response = await fetch(`${API_URL}/api/incidents/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

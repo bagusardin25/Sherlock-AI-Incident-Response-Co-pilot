@@ -155,7 +155,8 @@ export default function IncidentPage() {
   const [fileUrl, setFileUrl] = useState<string | null>(null)
 
   const loadSnapshot = useCallback(async (): Promise<IncidentSnapshot | null> => {
-    const res = await fetch(`/api/incidents/${incidentId}/state`, {
+    const API_URL = 'https://sherlock-ai.up.railway.app'
+    const res = await fetch(`${API_URL}/api/incidents/${incidentId}/state`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -203,8 +204,9 @@ export default function IncidentPage() {
       }
 
       // Connect to SSE stream with token for active investigations.
+      const API_URL = 'https://sherlock-ai.up.railway.app'
       eventSource = new EventSource(
-        `/api/incidents/${incidentId}/stream?token=${encodeURIComponent(token)}`
+        `${API_URL}/api/incidents/${incidentId}/stream?token=${encodeURIComponent(token)}`
       )
 
       eventSource.onopen = () => {
@@ -451,7 +453,7 @@ export default function IncidentPage() {
                   setIsMerging(true);
                   setMergeError(null);
                   try {
-                    const res = await fetch(`/api/incidents/${incidentId}/merge`, {
+                    const res = await fetch(`https://sherlock-ai.up.railway.app/api/incidents/${incidentId}/merge`, {
                       method: 'POST',
                       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
                     });
@@ -508,7 +510,7 @@ export default function IncidentPage() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/incidents/${incidentId}/postmortem`, {
+                    const res = await fetch(`https://sherlock-ai.up.railway.app/api/incidents/${incidentId}/postmortem`, {
                       headers: { 'Authorization': `Bearer ${token}` }
                     })
                     if (!res.ok) throw new Error('Postmortem not ready yet')
