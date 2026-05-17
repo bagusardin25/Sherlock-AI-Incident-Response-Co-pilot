@@ -1,5 +1,42 @@
 import chalk from "chalk";
 
+const ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+
+function visibleLength(value: string): number {
+  return value.replace(ANSI_RE, "").length;
+}
+
+function terminalWidth(fallback = 88): number {
+  const cols = process.stdout.columns;
+  if (!cols || cols < 40) return fallback;
+  return Math.min(cols, 120);
+}
+
+export function wrapText(text: string, options: { indent?: string; width?: number } = {}): string[] {
+  const indent = options.indent ?? "";
+  const width = Math.max(24, options.width ?? terminalWidth() - visibleLength(indent));
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if (!current) {
+      current = word;
+      continue;
+    }
+
+    if (visibleLength(`${current} ${word}`) > width) {
+      lines.push(indent + current);
+      current = word;
+    } else {
+      current += " " + word;
+    }
+  }
+
+  if (current) lines.push(indent + current);
+  return lines.length ? lines : [indent];
+}
+
 // ─── agent name normalization ─────────────────────────────────────────────────
 
 /**
@@ -66,24 +103,8 @@ interface ReasoningBlock {
   detail?: Array<{ key: string; value: string }>;
 }
 
-function indentParagraph(text: string, indent: string, width = 72): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let current = "";
-  for (const w of words) {
-    if (!current) {
-      current = w;
-      continue;
-    }
-    if ((current + " " + w).length > width) {
-      lines.push(indent + current);
-      current = w;
-    } else {
-      current += " " + w;
-    }
-  }
-  if (current) lines.push(indent + current);
-  return lines;
+function indentParagraph(text: string, indent: string): string[] {
+  return wrapText(text, { indent, width: terminalWidth() - visibleLength(indent) });
 }
 
 function colorConfidence(pct: number): string {
@@ -141,7 +162,12 @@ export function agentBlock(rawName: string, headline: string, block: ReasoningBl
   if (block.detail && block.detail.length) {
     blank();
     for (const { key, value } of block.detail) {
-      console.log(labelIndent + chalk.dim(key.padEnd(14)) + chalk.white(value));
+      const keyLabel = labelIndent + chalk.dim(key.padEnd(14));
+      const wrapped = wrapText(value, { width: terminalWidth() - visibleLength(keyLabel) });
+      console.log(keyLabel + chalk.white(wrapped[0]));
+      for (const extra of wrapped.slice(1)) {
+        console.log(" ".repeat(visibleLength(keyLabel)) + chalk.white(extra));
+      }
     }
   }
 
@@ -198,7 +224,12 @@ export function sectionHeader(title: string) {
 // ─── key-value list ───────────────────────────────────────────────────────────
 
 export function kv(key: string, value: string, indent = "  ") {
-  console.log(indent + chalk.dim(key.padEnd(12)) + value);
+  const keyLabel = indent + chalk.dim(key.padEnd(12));
+  const wrapped = wrapText(value, { width: terminalWidth() - visibleLength(keyLabel) });
+  console.log(keyLabel + wrapped[0]);
+  for (const extra of wrapped.slice(1)) {
+    console.log(" ".repeat(visibleLength(keyLabel)) + extra);
+  }
 }
 
 // ─── reasoning helpers tied to known agent shapes ─────────────────────────────

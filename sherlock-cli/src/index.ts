@@ -10,6 +10,7 @@ import { postmortemCommand } from "./commands/postmortem.js";
 import { authCommand } from "./commands/auth.js";
 
 import { runShell } from "./shell/repl.js";
+import { checkForUpdate, currentVersion } from "./services/update.js";
 
 const BANNER = `
 ${chalk.cyan.bold("╔═══════════════════════════════════════════════════════╗")}
@@ -56,7 +57,8 @@ const isResolve = argv[0] === "resolve" || argv[0] === "investigate";
 // `sherlock` with no args → launch the interactive shell.
 // The shell prints its own banner; index.ts stays out of its way.
 if (noArgs) {
-  runShell()
+  checkForUpdate()
+    .then(() => runShell())
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(chalk.red("✗ Shell crashed: ") + (err?.message ?? err));
@@ -67,6 +69,8 @@ if (noArgs) {
   console.log(HELP_TEXT);
   process.exit(0);
 } else {
+  await checkForUpdate();
+
   // Cinematic banner only for the headline `resolve` one-shot.
   if (isResolve) console.log(BANNER);
 
@@ -74,7 +78,7 @@ if (noArgs) {
   program
     .name("sherlock-cli")
     .description("AI Incident Response Co-pilot")
-    .version("1.0.2", "-v, --version", "Show version")
+    .version(currentVersion(), "-v, --version", "Show version")
     .option("--mock", "Use local simulation mode (no backend required)");
 
   program.addCommand(authCommand);

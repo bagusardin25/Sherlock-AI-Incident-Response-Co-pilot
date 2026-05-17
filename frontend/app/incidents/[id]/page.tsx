@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import AgentCard from '@/components/AgentCard'
@@ -26,19 +26,122 @@ interface AgentState {
   endTime?: Date
 }
 
+type AgentMap = Record<string, AgentState>
+
+interface IncidentSnapshot {
+  status?: string
+  triage?: any
+  forensics?: any
+  root_cause?: any
+  fix?: any
+  postmortem?: string
+}
+
+const initialAgents: AgentMap = {
+  triage: { name: 'Bob Triage Engine', status: 'pending', message: 'Waiting in queue...' },
+  forensics: { name: 'Bob Forensics Engine', status: 'pending', message: 'Waiting in queue...' },
+  bob_analyst: { name: 'IBM Bob Analyst', status: 'pending', message: 'Waiting in queue...' },
+  fix: { name: 'Bob Fix Generator', status: 'pending', message: 'Waiting in queue...' },
+  postmortem: { name: 'Bob Postmortem Writer', status: 'pending', message: 'Waiting in queue...' },
+}
+
+const terminalStatuses = new Set(['completed', 'partial', 'failed'])
+
+function applySnapshotToAgents(snapshot: IncidentSnapshot, previous: AgentMap): AgentMap {
+  const now = new Date()
+  const updated: AgentMap = {
+    ...previous,
+    triage: {
+      ...previous.triage,
+      status: snapshot.triage ? 'completed' : previous.triage.status,
+      message: snapshot.triage
+        ? `Triage completed: ${snapshot.triage.severity?.toUpperCase?.() ?? 'UNKNOWN'} severity, ${snapshot.triage.error_type ?? 'unknown'}`
+        : previous.triage.message,
+      data: snapshot.triage
+        ? {
+            severity: snapshot.triage.severity,
+            error_type: snapshot.triage.error_type,
+            service: snapshot.triage.service,
+            confidence: snapshot.triage.confidence,
+          }
+        : previous.triage.data,
+      endTime: snapshot.triage ? previous.triage.endTime ?? now : previous.triage.endTime,
+    },
+    forensics: {
+      ...previous.forensics,
+      status: snapshot.forensics ? 'completed' : previous.forensics.status,
+      message: snapshot.forensics
+        ? `Forensics completed: ${snapshot.forensics.recent_commits?.length ?? 0} commits, ${snapshot.forensics.suspect_files?.length ?? 0} suspect files`
+        : previous.forensics.message,
+      data: snapshot.forensics
+        ? {
+            commits_count: snapshot.forensics.recent_commits?.length ?? 0,
+            suspect_files: snapshot.forensics.suspect_files ?? [],
+            blame_entries: snapshot.forensics.blame_info?.length ?? 0,
+          }
+        : previous.forensics.data,
+      endTime: snapshot.forensics ? previous.forensics.endTime ?? now : previous.forensics.endTime,
+    },
+    bob_analyst: {
+      ...previous.bob_analyst,
+      status: snapshot.root_cause ? 'completed' : previous.bob_analyst.status,
+      message: snapshot.root_cause
+        ? `Root cause identified: ${String(snapshot.root_cause.root_cause ?? '').slice(0, 100)}...`
+        : previous.bob_analyst.message,
+      data: snapshot.root_cause
+        ? {
+            root_cause: snapshot.root_cause.root_cause,
+            suspect_files_count: snapshot.root_cause.suspect_files?.length ?? 0,
+            confidence: snapshot.root_cause.confidence,
+          }
+        : previous.bob_analyst.data,
+      endTime: snapshot.root_cause ? previous.bob_analyst.endTime ?? now : previous.bob_analyst.endTime,
+    },
+    fix: {
+      ...previous.fix,
+      status: snapshot.fix ? 'completed' : previous.fix.status,
+      message: snapshot.fix ? `Fix generated: ${snapshot.fix.pr_title ?? 'Proposed patch'}` : previous.fix.message,
+      data: snapshot.fix
+        ? {
+            pr_title: snapshot.fix.pr_title,
+            files_modified: snapshot.fix.files_modified ?? [],
+            has_test: Boolean(snapshot.fix.test_code),
+          }
+        : previous.fix.data,
+      endTime: snapshot.fix ? previous.fix.endTime ?? now : previous.fix.endTime,
+    },
+    postmortem: {
+      ...previous.postmortem,
+      status: snapshot.postmortem ? 'completed' : previous.postmortem.status,
+      message: snapshot.postmortem ? 'Postmortem document generated' : previous.postmortem.message,
+      data: snapshot.postmortem
+        ? {
+            length: snapshot.postmortem.length,
+            sections: (snapshot.postmortem.match(/##/g) ?? []).length,
+          }
+        : previous.postmortem.data,
+      endTime: snapshot.postmortem ? previous.postmortem.endTime ?? now : previous.postmortem.endTime,
+    },
+  }
+
+  if (snapshot.status === 'failed') {
+    for (const key of Object.keys(updated)) {
+      if (updated[key].status === 'pending' || updated[key].status === 'running') {
+        updated[key] = { ...updated[key], status: 'failed', message: 'No completed result was saved for this step' }
+      }
+    }
+  }
+
+  return updated
+}
+
 export default function IncidentPage() {
   const params = useParams()
   const router = useRouter()
   const { token, isLoading: authLoading } = useAuth()
   const incidentId = params.id as string
 
-  const [agents, setAgents] = useState<Record<string, AgentState>>({
-    triage: { name: 'Bob Triage Engine', status: 'pending', message: 'Waiting in queue...' },
-    forensics: { name: 'Bob Forensics Engine', status: 'pending', message: 'Waiting in queue...' },
-    bob_analyst: { name: 'IBM Bob Analyst', status: 'pending', message: 'Waiting in queue...' },
-    fix: { name: 'Bob Fix Generator', status: 'pending', message: 'Waiting in queue...' },
-    postmortem: { name: 'Bob Postmortem Writer', status: 'pending', message: 'Waiting in queue...' },
-  })
+  const [agents, setAgents] = useState<AgentMap>(initialAgents)
 
   const [pipelineStatus, setPipelineStatus] = useState<'connecting' | 'processing' | 'completed' | 'failed'>('connecting')
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +153,20 @@ export default function IncidentPage() {
   const [mergeError, setMergeError] = useState<string | null>(null)
   const [commitUrl, setCommitUrl] = useState<string | null>(null)
   const [fileUrl, setFileUrl] = useState<string | null>(null)
+
+  const loadSnapshot = useCallback(async (): Promise<IncidentSnapshot | null> => {
+    const res = await fetch(`/api/incidents/${incidentId}/state`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!res.ok) return null
+
+    const snapshot = await res.json()
+    setAgents((prev) => applySnapshotToAgents(snapshot, prev))
+    if (snapshot.postmortem) setPostmortem(snapshot.postmortem)
+
+    return snapshot
+  }, [incidentId, token])
 
   // Timer for elapsed time
   useEffect(() => {
@@ -68,84 +185,113 @@ export default function IncidentPage() {
       return
     }
 
-    // Connect to SSE stream with token
-    const eventSource = new EventSource(
-      `/api/incidents/${incidentId}/stream?token=${encodeURIComponent(token)}`
-    )
+    let eventSource: EventSource | null = null
+    let cancelled = false
 
-    eventSource.onopen = () => {
-      console.log('SSE connection opened')
-      setPipelineStatus('processing')
-    }
+    const connect = async () => {
+      const snapshot = await loadSnapshot().catch((err) => {
+        console.warn('Unable to load incident snapshot:', err)
+        return null
+      })
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        if (data.type === 'complete') {
-          setPipelineStatus('completed')
-          eventSource.close()
-          return
-        }
+      if (cancelled) return
 
-        if (data.type === 'error') {
-          setError(data.message)
-          setPipelineStatus('failed')
-          eventSource.close()
-          return
-        }
+      if (snapshot && terminalStatuses.has(snapshot.status ?? '')) {
+        setPipelineStatus(snapshot.status === 'failed' ? 'failed' : 'completed')
+        if (snapshot.status === 'failed') setError('Incident analysis failed before all results were saved')
+        return
+      }
 
-        const agentEvent: AgentEvent = data
-        
-        setAgents((prev) => {
-          const updated = { ...prev }
-          const agentKey = agentEvent.agent_name
+      // Connect to SSE stream with token for active investigations.
+      eventSource = new EventSource(
+        `/api/incidents/${incidentId}/stream?token=${encodeURIComponent(token)}`
+      )
 
-          if (agentKey === 'pipeline') {
-            if (agentEvent.status === 'completed') {
-              setPipelineStatus('completed')
-            } else if (agentEvent.status === 'failed') {
-              setPipelineStatus('failed')
-              setError(agentEvent.message)
+      eventSource.onopen = () => {
+        console.log('SSE connection opened')
+        setPipelineStatus('processing')
+      }
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.type === 'complete') {
+            setPipelineStatus('completed')
+            eventSource?.close()
+            return
+          }
+
+          if (data.type === 'error') {
+            setError(data.message)
+            setPipelineStatus('failed')
+            eventSource?.close()
+            return
+          }
+
+          const agentEvent: AgentEvent = data
+          
+          setAgents((prev) => {
+            const updated = { ...prev }
+            const agentKey = agentEvent.agent_name
+
+            if (agentKey === 'pipeline') {
+              if (agentEvent.status === 'completed') {
+                setPipelineStatus('completed')
+              } else if (agentEvent.status === 'failed') {
+                setPipelineStatus('failed')
+                setError(agentEvent.message)
+              }
+              return updated
             }
+
+            if (updated[agentKey]) {
+              updated[agentKey] = {
+                ...updated[agentKey],
+                status: agentEvent.status,
+                message: agentEvent.message,
+                data: agentEvent.data,
+              }
+
+              if (agentEvent.status === 'running' && !updated[agentKey].startTime) {
+                updated[agentKey].startTime = new Date()
+              }
+
+              if ((agentEvent.status === 'completed' || agentEvent.status === 'failed') && !updated[agentKey].endTime) {
+                updated[agentKey].endTime = new Date()
+              }
+            }
+
             return updated
-          }
+          })
+        } catch (err) {
+          console.error('Error parsing SSE event:', err)
+        }
+      }
 
-          if (updated[agentKey]) {
-            updated[agentKey] = {
-              ...updated[agentKey],
-              status: agentEvent.status,
-              message: agentEvent.message,
-              data: agentEvent.data,
-            }
+      eventSource.onerror = async (err) => {
+        console.error('SSE error:', err)
+        eventSource?.close()
 
-            if (agentEvent.status === 'running' && !updated[agentKey].startTime) {
-              updated[agentKey].startTime = new Date()
-            }
+        const fallbackSnapshot = await loadSnapshot().catch(() => null)
+        if (fallbackSnapshot && terminalStatuses.has(fallbackSnapshot.status ?? '')) {
+          setPipelineStatus(fallbackSnapshot.status === 'failed' ? 'failed' : 'completed')
+          if (fallbackSnapshot.status !== 'failed') setError(null)
+          return
+        }
 
-            if ((agentEvent.status === 'completed' || agentEvent.status === 'failed') && !updated[agentKey].endTime) {
-              updated[agentKey].endTime = new Date()
-            }
-          }
-
-          return updated
-        })
-      } catch (err) {
-        console.error('Error parsing SSE event:', err)
+        setError('Connection to analysis server lost')
+        setPipelineStatus('failed')
       }
     }
 
-    eventSource.onerror = (err) => {
-      console.error('SSE error:', err)
-      setError('Connection to analysis server lost')
-      setPipelineStatus('failed')
-      eventSource.close()
-    }
+    connect()
 
     return () => {
-      eventSource.close()
+      cancelled = true
+      eventSource?.close()
     }
-  }, [incidentId, token, authLoading])
+  }, [incidentId, token, authLoading, loadSnapshot])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)

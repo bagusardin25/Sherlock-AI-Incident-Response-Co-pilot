@@ -19,7 +19,7 @@ import { mockIncidentList, mockIncidentState, mockPostmortem } from "../services
 import { agentTag, blank, failure, info, rule, success, warn } from "./render.js";
 import { viewIncidentList, viewIncidentDetail, viewFix, viewPostmortem } from "./views.js";
 import { runResolvePipeline } from "./pipeline.js";
-import { getSession, refreshAuth } from "./session.js";
+import { getSession, refreshAuth, setActiveIncident } from "./session.js";
 import { openUrl } from "../utils/opener.js";
 import { config } from "../config.js";
 
@@ -77,8 +77,11 @@ const helpHandler: Handler = async () => {
   console.log(`    ${chalk.cyan("/status")} ${chalk.dim("[id]")}           List incidents or show detail`);
   console.log(`    ${chalk.cyan("/fix")} ${chalk.dim("[id]")}              Show generated fix`);
   console.log(`    ${chalk.cyan("/postmortem")} ${chalk.dim("[id]")}       Show incident report`);
+  console.log(`    ${chalk.cyan("/verify")} ${chalk.dim("[id]")}           Show verification steps for the fix`);
   console.log(`    ${chalk.cyan("/open")} ${chalk.dim("[id]")}             Open incident in web dashboard`);
   console.log(`    ${chalk.cyan("/history")}                Show this session's incidents`);
+  console.log(`    ${chalk.cyan("/switch")} ${chalk.dim("<id>")}           Switch active incident`);
+  console.log(`    ${chalk.cyan("/incidents list")}         List known incidents`);
   console.log(`    ${chalk.cyan("/agents")}                 Show the multi-agent pipeline`);
   console.log("");
   console.log(`    ${chalk.cyan("/auth login")}             Authenticate the CLI`);
@@ -105,6 +108,14 @@ const clearHandler: Handler = async () => {
   console.clear();
   return "continue";
 };
+
+function showMockNotice() {
+  const sess = getSession();
+  if (sess.mode === "mock") {
+    warn("MOCK MODE - not using IBM Bob. Results are illustrative only.");
+    if (sess.autoFallbackMock) info(`Backend unreachable: ${sess.apiUrl}`);
+  }
+}
 
 const resolveHandler: Handler = async (args, ask) => {
   const sess = getSession();
@@ -187,6 +198,12 @@ async function resolveIncidentId(args: string[], ask: AskFn, action: string): Pr
 const statusHandler: Handler = async (args, ask) => {
   const sess = getSession();
   const mock = await useMock();
+  blank();
+  console.log(chalk.bold.white("  Runtime"));
+  console.log(chalk.dim("  Mode      ") + chalk.white(sess.mode.toUpperCase()) + (sess.autoFallbackMock ? chalk.yellow(" (auto fallback)") : ""));
+  console.log(chalk.dim("  Backend   ") + chalk.white(sess.apiUrl));
+  console.log(chalk.dim("  Auth      ") + (sess.authenticated ? chalk.green("yes") : chalk.yellow("no")));
+  if (mock) showMockNotice();
 
   // If user passes an id, or has an active incident, show detail.
   // Otherwise, show the list (no need to prompt).
@@ -231,6 +248,48 @@ const fixHandler: Handler = async (args, ask) => {
     return "continue";
   }
   viewFix(id, state);
+  return "continue";
+};
+
+const verifyHandler: Handler = async (args, ask) => {
+  const id = await resolveIncidentId(args, ask, "verify");
+  if (!id) {
+    warn("No incident ID provided.");
+    return "continue";
+  }
+
+  const mock = await useMock();
+  let state: any;
+  try {
+    state = mock ? mockIncidentState(id) : await getIncidentState(id);
+  } catch (err: any) {
+    failure(`Cannot fetch ${id}: ${err.message ?? err}`);
+    return "continue";
+  }
+
+  blank();
+  console.log(chalk.bold.white(`  Verification plan for ${id}`));
+  rule(44);
+  if (!state.fix) {
+    warn("No fix is available yet.");
+    info("Run /fix after the investigation completes.");
+    blank();
+    return "continue";
+  }
+
+  const patchPresent = Boolean(state.fix.patch_unified_diff);
+  const testPresent = Boolean(state.fix.test_code);
+  console.log(chalk.dim("  Patch     ") + (patchPresent ? chalk.green("available") : chalk.yellow("missing")));
+  console.log(chalk.dim("  Test      ") + (testPresent ? chalk.green("included") : chalk.yellow("not generated")));
+  blank();
+  info("Suggested local verification:");
+  console.log(chalk.white("  1. Save the fix from /fix to a patch file."));
+  console.log(chalk.white("  2. Run git apply fix.patch in the target repository."));
+  console.log(chalk.white("  3. Run the repository test suite, for example npm test or the service-specific test command."));
+  if (testPresent) {
+    console.log(chalk.white("  4. Add the generated regression test before merging."));
+  }
+  blank();
   return "continue";
 };
 
@@ -280,6 +339,48 @@ const historyHandler: Handler = async () => {
     );
   }
   blank();
+  return "continue";
+};
+
+const switchHandler: Handler = async (args, ask) => {
+  const sess = getSession();
+  let id = args[0]?.trim();
+
+  if (!id) {
+    if (!sess.history.length) {
+      warn("No incidents in this session yet.");
+      return "continue";
+    }
+    blank();
+    console.log(chalk.bold.white("  Session incidents"));
+    for (const h of sess.history) {
+      const active = sess.activeIncident === h.incidentId ? chalk.green(" (active)") : "";
+      console.log(`  ${chalk.cyan(h.incidentId)}${active} ${chalk.dim(h.summary ?? "")}`);
+    }
+    blank();
+    id = (await ask("Incident ID to activate:")).trim();
+  }
+
+  if (!id) {
+    warn("No incident ID provided.");
+    return "continue";
+  }
+
+  setActiveIncident(id);
+  success(`Active incident: ${id}`);
+  blank();
+  return "continue";
+};
+
+const incidentsHandler: Handler = async (args, ask) => {
+  const sub = args[0]?.toLowerCase();
+  if (!sub || sub === "list" || sub === "ls") {
+    return statusHandler([], ask);
+  }
+  if (sub === "switch") {
+    return switchHandler(args.slice(1), ask);
+  }
+  warn("Usage: /incidents <list|switch>");
   return "continue";
 };
 
@@ -433,8 +534,11 @@ const HANDLERS: Record<string, Handler> = {
   resolve: resolveHandler,
   status: statusHandler,
   fix: fixHandler,
+  verify: verifyHandler,
   postmortem: postmortemHandler,
   history: historyHandler,
+  switch: switchHandler,
+  incidents: incidentsHandler,
   open: openHandler,
   agents: agentsHandler,
   auth: authHandler,
@@ -454,6 +558,9 @@ export async function dispatchCommand(line: string, ask: AskFn): Promise<Dispatc
     return "continue";
   }
   try {
+    if (!["help", "?", "clear", "cls", "exit", "quit", "q"].includes(parsed.name)) {
+      showMockNotice();
+    }
     return await handler(parsed.args, ask);
   } catch (err: any) {
     failure(`Command failed: ${err.message ?? err}`);

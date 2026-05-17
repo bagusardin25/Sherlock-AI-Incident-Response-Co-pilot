@@ -64,6 +64,7 @@ export async function runResolvePipeline(opts: RunOptions): Promise<PipelineResu
 
   if (showStartup) {
     if (useMockMode) {
+      failure("MOCK MODE - not using IBM Bob. Results are illustrative only.");
       info("Local simulation engaged — mock mode");
     }
   }

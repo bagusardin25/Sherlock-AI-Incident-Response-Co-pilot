@@ -4,7 +4,7 @@ import { select, search, input, password } from "@inquirer/prompts";
 
 import { initSession, getSession, modeLabel } from "./session.js";
 import { dispatchCommand, type AskFn } from "./commands.js";
-import { blank, info } from "./render.js";
+import { blank, info, warn } from "./render.js";
 
 const SHELL_BANNER = `
 ${chalk.cyan.bold("╔════════════════════════════════════════════════════════╗")}
@@ -19,7 +19,11 @@ function renderSessionHeader() {
     ? chalk.green("yes")
     : chalk.yellow("no — select /auth login");
   console.log(chalk.dim(modeLabel(sess.mode, sess.autoFallbackMock)));
+  if (sess.mode === "mock") {
+    warn("MOCK MODE - not using IBM Bob. Results are illustrative only.");
+  }
   console.log(chalk.dim("Workspace      ") + chalk.white(sess.workspace));
+  console.log(chalk.dim("Backend        ") + chalk.white(sess.apiUrl));
   console.log(chalk.dim("Authenticated  ") + authStr);
   if (!sess.authenticated) {
     console.log(chalk.dim("Next           ") + chalk.white("Run /auth login to open web login and create an API key"));
@@ -31,10 +35,9 @@ function renderSessionHeader() {
 
 function buildPromptLabel(): string {
   const sess = getSession();
-  if (sess.activeIncident) {
-    return `sherlock(${sess.activeIncident}) ›`;
-  }
-  return "sherlock ›";
+  const mode = sess.mode === "mock" ? "[MOCK] " : "";
+  if (sess.activeIncident) return `${mode}sherlock(${sess.activeIncident}) >`;
+  return `${mode}sherlock >`;
 }
 
 // ─── Command palette choices ─────────────────────────────────────────────────
@@ -44,8 +47,11 @@ const PALETTE_CHOICES = [
   { name: "/status         List incidents or show detail", value: "status" },
   { name: "/fix            Show generated fix", value: "fix" },
   { name: "/postmortem     Show incident report", value: "postmortem" },
+  { name: "/verify         Show fix verification steps", value: "verify" },
   { name: "/open           Open in web dashboard", value: "open" },
   { name: "/history        Session history", value: "history" },
+  { name: "/switch         Switch active incident", value: "switch" },
+  { name: "/incidents list List known incidents", value: "incidents list" },
   { name: "/agents         Show multi-agent pipeline", value: "agents" },
   { name: "/auth login     Authenticate CLI", value: "auth login" },
   { name: "/auth status    Auth status", value: "auth status" },
