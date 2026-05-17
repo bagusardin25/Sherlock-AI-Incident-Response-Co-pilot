@@ -27,7 +27,7 @@ postmortem) reason through your repository and produce a fix PR + postmortem.
 ## Quick start
 
 ```bash
-npm install -g @bagusardin25/sherlock-cli
+npm install -g sherlockibm-cli
 sherlock-cli
 ```
 

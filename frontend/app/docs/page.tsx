@@ -52,7 +52,7 @@ export default function DocsPage() {
         <p className="text-slate-600 dark:text-slate-300 mb-4">
           For terminal-based workflows, install the Sherlock CLI globally:
         </p>
-        <CodeBlock code="npm install -g @bagusardin25/sherlock-cli" language="bash" />
+        <CodeBlock code="npm install -g sherlockibm-cli" language="bash" />
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-3">Requires Node.js 18 or higher.</p>
 
         <h3 className="text-xl font-semibold !mt-8 !mb-4 flex items-center gap-3">
@@ -199,15 +199,15 @@ export default function DocsPage() {
             </thead>
             <tbody className="text-slate-600 dark:text-slate-300">
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
-                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_API_KEY</code></td>
+                <td className="py-3 pr-4"><code className="text-emerald-600 dark:text-emerald-400">SHERLOCK_API_KEY</code></td>
                 <td className="py-3">Your API key (from Settings → API Keys)</td>
               </tr>
               <tr className="border-b border-black/5 dark:border-black/10 dark:border-slate-800/50">
-                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_API_URL</code></td>
+                <td className="py-3 pr-4"><code className="text-emerald-600 dark:text-emerald-400">SHERLOCK_API_URL</code></td>
                 <td className="py-3">API endpoint (defaults to Sherlock cloud)</td>
               </tr>
               <tr>
-                <td className="py-3 pr-4"><code className="text-emerald-400">SHERLOCK_WORKSPACE</code></td>
+                <td className="py-3 pr-4"><code className="text-emerald-600 dark:text-emerald-400">SHERLOCK_WORKSPACE</code></td>
                 <td className="py-3">Workspace name shown in the shell header</td>
               </tr>
             </tbody>
@@ -288,23 +288,23 @@ export default function DocsPage() {
       <section id="faq" className="scroll-mt-32">
         <h2 className="text-3xl tracking-tight !mb-8">FAQ</h2>
         <div className="space-y-6">
-          <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
+          <div className="bg-black/5 dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Do I need to install anything in my repository?</h4>
             <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">No. Sherlock accesses your repository via URL and reads code dynamically. No agents, webhooks, or plugins need to be installed on your servers.</p>
           </div>
-          <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
+          <div className="bg-black/5 dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">What languages are supported?</h4>
             <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">TypeScript, JavaScript, Python, Go, and Java for deep code analysis and automated fix generation. The forensics agent works with any git repository regardless of language.</p>
           </div>
-          <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
+          <div className="bg-black/5 dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Is my code secure?</h4>
             <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">Yes. Source files are fetched ephemerally into memory during analysis and discarded immediately after. We do not store your proprietary code.</p>
           </div>
-          <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
+          <div className="bg-black/5 dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Can I use Sherlock in CI/CD pipelines?</h4>
             <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">Yes. The CLI supports one-shot commands (<code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock-cli resolve</code>, <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">sherlock-cli fix --output</code>) designed for automation. Set <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">SHERLOCK_API_KEY</code> as an environment variable in your pipeline.</p>
           </div>
-          <div className="bg-black/5 dark:bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
+          <div className="bg-black/5 dark:bg-slate-900/50 p-6 rounded-2xl border border-black/10 dark:border-slate-800">
             <h4 className="text-lg font-bold text-slate-900 dark:text-white">Do I need the CLI to use Sherlock?</h4>
             <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">No. The web dashboard provides the full experience — submit alerts, watch agents work in real-time, review fixes, and download postmortems. The CLI is an optional power-user tool for terminal workflows.</p>
           </div>

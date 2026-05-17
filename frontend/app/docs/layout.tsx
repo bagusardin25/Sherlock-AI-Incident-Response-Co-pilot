@@ -87,7 +87,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </aside>
 
-        <main className="flex-1 min-w-0 bg-black/5 dark:bg-white dark:bg-slate-900/30 border border-black/10 dark:border-slate-800 rounded-3xl p-6 md:p-12 mb-16 shadow-lg">
+        <main className="flex-1 min-w-0 bg-black/5 dark:bg-slate-900/30 border border-black/10 dark:border-slate-800 rounded-3xl p-6 md:p-12 mb-16 shadow-lg">
           {children}
         </main>
       </div>
